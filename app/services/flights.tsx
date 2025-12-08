@@ -38,7 +38,7 @@ function LocationField({ label, airport, onPress }: LocationFieldProps) {
   return (
     <Pressable style={styles.locationField} onPress={onPress}>
       <View style={styles.locationIcon}>
-        <Ionicons name="airplane-outline" size={20} color="#1e73f6" />
+        <Ionicons name="airplane-outline" size={20} color="#6a6a6a" />
       </View>
       <View style={styles.locationTextContainer}>
         <Text style={styles.fieldLabel}>{label}</Text>
@@ -190,16 +190,16 @@ export default function FlightsScreen() {
             label="From"
             airport={fromAirport}
             onPress={() => {
-              setActiveField('from');
-              setIsModalVisible(true);
-            }}
-          />
+            setActiveField('from');
+            setIsModalVisible(true);
+          }}
+        />
 
-          <View style={styles.swapWrapper}>
-            <Pressable style={styles.swapButton} onPress={handleSwap} accessibilityLabel="Swap locations">
-              <Ionicons name="swap-vertical" size={18} color="#1e73f6" />
-            </Pressable>
-          </View>
+        <View style={styles.swapWrapper}>
+          <Pressable style={styles.swapButton} onPress={handleSwap} accessibilityLabel="Swap locations">
+            <Ionicons name="swap-vertical" size={18} color="#6a6a6a" />
+          </Pressable>
+        </View>
 
           <LocationField
             label="To"
@@ -293,45 +293,38 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   locationRow: {
-    gap: 12,
+    gap: 10,
     position: 'relative',
-    paddingRight: 44,
+    paddingRight: 40,
   },
   locationField: {
     borderWidth: 1,
-    borderColor: '#e1e6ef',
-    borderRadius: 14,
+    borderColor: '#d9d9d9',
+    borderRadius: 12,
     backgroundColor: '#ffffff',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     flexDirection: 'row',
     gap: 10,
-    shadowColor: '#0c2047',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 1,
   },
   locationIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    backgroundColor: '#e8f1ff',
+    width: 28,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
   },
   locationTextContainer: {
     flex: 1,
-    gap: 2,
+    gap: 4,
   },
   locationPrimary: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#0c2047',
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#3a3a3a',
   },
   locationSecondary: {
     fontSize: 12,
-    color: '#6e7b93',
+    color: '#7a7a7a',
   },
   swapWrapper: {
     position: 'absolute',
@@ -340,19 +333,14 @@ const styles = StyleSheet.create({
     transform: [{ translateY: -24 }],
   },
   swapButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#e1e6ef',
+    borderColor: '#d9d9d9',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#0c2047',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
   },
   detailRow: {
     flexDirection: 'row',
@@ -384,7 +372,7 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#0c2047',
+    color: '#4c4c4c',
     letterSpacing: 0.2,
   },
   detailValue: {
