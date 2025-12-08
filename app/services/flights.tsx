@@ -20,8 +20,8 @@ const flightHeroImage =
 type Airport = {
   IATA: string;
   ICAO: string;
-  Airport_name: string;
-  Location_served: string;
+  Airport_name: string | null;
+  Location_served: string | null;
   Time: string;
   DST: string | null;
 };
@@ -29,7 +29,7 @@ type Airport = {
 const getCityAndCountry = (airport: Airport | null | undefined) => {
   if (!airport) return { city: '', country: '' };
 
-  const cleaned = airport.Location_served.replace(/\u00a0/g, ' ');
+  const cleaned = (airport.Location_served ?? '').replace(/\u00a0/g, ' ');
   const parts = cleaned.split(',').map((part) => part.trim()).filter(Boolean);
 
   return {
@@ -37,6 +37,9 @@ const getCityAndCountry = (airport: Airport | null | undefined) => {
     country: parts[parts.length - 1] ?? '',
   };
 };
+
+const getAirportName = (airport: Airport | null | undefined) =>
+  (airport?.Airport_name ?? '').replace(/\u00a0/g, ' ');
 
 type LocationFieldProps = {
   label: string;
@@ -48,10 +51,9 @@ const airportsData: Airport[] = IATAAirports;
 
 function LocationField({ label, airport, onPress }: LocationFieldProps) {
   const { city, country } = getCityAndCountry(airport);
+  const airportName = getAirportName(airport);
   const mainLabel = airport ? city || airport.IATA : 'Select a city';
-  const airportLabel = airport
-    ? airport.Airport_name.replace(/\u00a0/g, ' ')
-    : 'Tap to search for an airport';
+  const airportLabel = airport ? airportName : 'Tap to search for an airport';
   const secondaryLabel = airport
     ? city && country
       ? `${city} Airport, ${country}`
@@ -120,14 +122,19 @@ function SearchModal({
 
     const lower = query.toLowerCase();
     return airportsData
-      .filter(
-        (airport) =>
-          getCityAndCountry(airport).city.toLowerCase().includes(lower) ||
+      .filter((airport) => {
+        const { city, country } = getCityAndCountry(airport);
+        const airportName = getAirportName(airport).toLowerCase();
+        const served = (airport.Location_served ?? '').replace(/\u00a0/g, ' ').toLowerCase();
+
+        return (
+          city.toLowerCase().includes(lower) ||
           airport.IATA.toLowerCase().includes(lower) ||
-          airport.Airport_name.toLowerCase().includes(lower) ||
-          getCityAndCountry(airport).country.toLowerCase().includes(lower) ||
-          airport.Location_served.replace(/\u00a0/g, ' ').toLowerCase().includes(lower),
-      )
+          airportName.includes(lower) ||
+          country.toLowerCase().includes(lower) ||
+          served.includes(lower)
+        );
+      })
       .slice(0, 50);
   }, [query]);
 
@@ -162,7 +169,7 @@ function SearchModal({
                     {getCityAndCountry(item).city || item.IATA} ({item.IATA})
                   </Text>
                   <Text style={styles.listSecondary} numberOfLines={1}>
-                    {item.Airport_name.replace(/\u00a0/g, ' ')}
+                    {getAirportName(item)}
                   </Text>
                 </View>
               </Pressable>
