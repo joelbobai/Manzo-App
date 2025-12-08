@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
@@ -11,7 +12,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import IATAAirports from '../../data/IATA_airports.json';
 
 const flightHeroImage =
@@ -34,22 +34,17 @@ type LocationFieldProps = {
 const airportsData: Airport[] = IATAAirports;
 
 function LocationField({ label, airport, onPress }: LocationFieldProps) {
-  const mainLabel = airport ? airport.City : 'Select a city';
+  const mainLabel = airport ? `${airport.City}  ${airport.IATA}` : 'Select a city';
   return (
     <Pressable style={styles.locationField} onPress={onPress}>
-      <View style={styles.locationIcon}>
-        <Ionicons name="airplane" size={18} color="#8e8e93" />
+      <View style={styles.locationIcon}> 
+        <Ionicons name="location-outline" size={20} color="#1e73f6" />
       </View>
       <View style={styles.locationTextContainer}>
         <Text style={styles.fieldLabel}>{label}</Text>
-        <View style={styles.locationMainRow}>
-          <Text style={styles.locationPrimary}>{mainLabel}</Text>
-          {airport && <Text style={styles.locationCode}>{airport.IATA}</Text>}
-        </View>
+        <Text style={styles.locationPrimary}>{mainLabel}</Text>
         <Text style={styles.locationSecondary} numberOfLines={1}>
-          {airport
-            ? `${airport.Airport_name}${airport.Country ? `, ${airport.Country}` : ''}`
-            : 'Tap to search for an airport'}
+          {airport ? airport.Airport_name : 'Tap to search for an airport'}
         </Text>
       </View>
     </Pressable>
@@ -67,7 +62,7 @@ function DetailField({ label, value, icon, muted }: DetailFieldProps) {
   return (
     <View style={styles.detailField}>
       <View style={styles.detailIcon}>
-        <Ionicons name={icon} size={18} color="#6d6d6d" />
+        <Ionicons name={icon} size={18} color="#1e73f6" />
       </View>
       <View style={styles.detailTextContainer}>
         <Text style={styles.fieldLabel}>{label}</Text>
@@ -112,10 +107,10 @@ function SearchModal({
         <View style={styles.modalCard}>
           <Text style={styles.modalTitle}>{title}</Text>
           <View style={styles.searchInputWrapper}>
-            <Ionicons name="search" size={18} color="#6d6d6d" />
+            <Ionicons name="search" size={18} color="#1e73f6" />
             <TextInput
               placeholder="Search by city, airport or country"
-              placeholderTextColor="#a0a0a0"
+              placeholderTextColor="#8fa2bc"
               value={query}
               onChangeText={setQuery}
               style={styles.searchInput}
@@ -129,7 +124,7 @@ function SearchModal({
             renderItem={({ item }) => (
               <Pressable style={styles.listItem} onPress={() => onSelect(item)}>
                 <View style={styles.listIcon}>
-                  <Ionicons name="airplane-outline" size={18} color="#6d6d6d" />
+                  <Ionicons name="airplane-outline" size={18} color="#1e73f6" />
                 </View>
                 <View style={styles.listTextContainer}>
                   <Text style={styles.listPrimary} numberOfLines={1}>
@@ -150,10 +145,10 @@ function SearchModal({
 
 export default function FlightsScreen() {
   const [fromAirport, setFromAirport] = useState<Airport | null>(
-    airportsData.find((airport) => airport.IATA === 'LHE') ?? null,
+    airportsData.find((airport) => airport.IATA === 'DEL') ?? null,
   );
   const [toAirport, setToAirport] = useState<Airport | null>(
-    airportsData.find((airport) => airport.IATA === 'KHI') ?? null,
+    airportsData.find((airport) => airport.IATA === 'CCU') ?? null,
   );
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [activeField, setActiveField] = useState<'from' | 'to'>('from');
@@ -204,7 +199,7 @@ export default function FlightsScreen() {
 
           <View style={styles.swapWrapper}>
             <Pressable style={styles.swapButton} onPress={handleSwap} accessibilityLabel="Swap locations">
-              <Ionicons name="swap-vertical" size={20} color="#6d6d6d" />
+              <Ionicons name="swap-vertical" size={20} color="#1e73f6" />
             </Pressable>
           </View>
 
@@ -222,7 +217,7 @@ export default function FlightsScreen() {
 
         <View style={styles.detailRow}>
           <DetailField label="Departure" value="15/07/2022" icon="calendar-outline" />
-          <DetailField label="Return" value="+ Add Return Date" icon="add-circle-outline" muted />
+          <DetailField label="Return" value="+ Add Return Date" icon="return-up-forward" muted />
         </View>
 
         <View style={styles.detailRow}>
@@ -286,12 +281,12 @@ const styles = StyleSheet.create({
   formCard: {
     backgroundColor: '#ffffff',
     borderRadius: 18,
-    padding: 18,
-    shadowColor: '#000000',
+    padding: 16,
+    shadowColor: '#0c2047',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.14,
-    shadowRadius: 24,
-    elevation: 4,
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 3,
     marginTop: -60,
     marginHorizontal: 16,
   },
@@ -299,53 +294,42 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#0c2047',
-    marginBottom: 14,
+    marginBottom: 10,
   },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   locationField: {
     borderWidth: 1,
-    borderColor: '#e4e4e4',
-    borderRadius: 12,
-    backgroundColor: '#ffffff',
-    padding: 14,
+    borderColor: '#d5deeb',
+    borderRadius: 16,
+    backgroundColor: '#f8fbff',
+    padding: 12,
     flexDirection: 'row',
-    gap: 12,
-    alignItems: 'center',
+    gap: 10,
   },
   locationIcon: {
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: '#f3f3f3',
+    backgroundColor: '#e8f1ff',
     alignItems: 'center',
     justifyContent: 'center',
   },
   locationTextContainer: {
     flex: 1,
-    gap: 4,
-  },
-  locationMainRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 8,
+    gap: 2,
   },
   locationPrimary: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#1f1f1f',
-  },
-  locationCode: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#7a7a7a',
+    color: '#0c2047',
   },
   locationSecondary: {
     fontSize: 12,
-    color: '#8a8a8f',
+    color: '#50607a',
   },
   swapWrapper: {
     alignSelf: 'stretch',
@@ -355,31 +339,30 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#e8f1ff',
     alignItems: 'center',
     justifyContent: 'center',
   },
   detailRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 12,
+    gap: 10,
+    marginTop: 10,
   },
   detailField: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#e4e4e4',
-    borderRadius: 12,
-    backgroundColor: '#ffffff',
+    borderColor: '#d5deeb',
+    borderRadius: 16,
+    backgroundColor: '#f8fbff',
     padding: 12,
     flexDirection: 'row',
     gap: 10,
-    alignItems: 'center',
   },
   detailIcon: {
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: '#f3f3f3',
+    backgroundColor: '#e8f1ff',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -390,19 +373,19 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#6d6d6d',
-    letterSpacing: 0.3,
+    color: '#0c2047',
+    letterSpacing: 0.2,
   },
   detailValue: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
-    color: '#1f1f1f',
+    color: '#0c2047',
   },
   mutedText: {
-    color: '#a0a0a0',
+    color: '#7a8aa7',
   },
   searchButton: {
-    marginTop: 16,
+    marginTop: 4,
     backgroundColor: '#1e73f6',
     paddingVertical: 14,
     borderRadius: 12,
@@ -440,13 +423,13 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#1f1f1f',
+    color: '#0c2047',
   },
   searchInputWrapper: {
     borderWidth: 1,
-    borderColor: '#e4e4e4',
+    borderColor: '#d5deeb',
     borderRadius: 12,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: '#f8fbff',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -455,7 +438,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    color: '#1f1f1f',
+    color: '#0c2047',
     fontWeight: '600',
   },
   listItem: {
@@ -468,7 +451,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: '#f3f3f3',
+    backgroundColor: '#e8f1ff',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -479,14 +462,14 @@ const styles = StyleSheet.create({
   listPrimary: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#1f1f1f',
+    color: '#0c2047',
   },
   listSecondary: {
     fontSize: 12,
-    color: '#8a8a8f',
+    color: '#50607a',
   },
   listDivider: {
     height: 1,
-    backgroundColor: '#e6e6e6',
+    backgroundColor: '#ecf1f8',
   },
 });
