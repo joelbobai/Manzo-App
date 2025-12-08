@@ -1,189 +1,412 @@
-import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import { useState } from 'react';
+import {
+  FlatList,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+type Category = {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+};
 
-const services = [
-  { label: 'Flights', route: '/services/flights', description: 'Search and book flights' },
-  { label: 'Hotels', route: '/services/hotels', description: 'Find stays worldwide' },
-  { label: 'Rides', route: '/services/rides', description: 'Airport and city rides' },
-  { label: 'Visa', route: '/services/visa', description: 'Visa guidance & support' },
+type Hotel = {
+  name: string;
+  location: string;
+  country: string;
+  price: string;
+  rating: string;
+  image: string;
+  badge?: string;
+};
+
+const categories: Category[] = [
+  { label: 'Hotel', icon: 'bed-outline' },
+  { label: 'Flight', icon: 'airplane-outline' },
+  { label: 'Place', icon: 'map-outline' },
+  { label: 'Food', icon: 'fast-food-outline' },
 ];
 
-const popularRoutes = [
-  { from: 'Lagos', to: 'London', price: '$820' },
-  { from: 'Abuja', to: 'Dubai', price: '$680' },
-  { from: 'Accra', to: 'Nairobi', price: '$540' },
+const popularHotels: Hotel[] = [
+  {
+    name: 'Santorini',
+    location: 'Greece',
+    country: 'Greece',
+    price: '$488/night',
+    rating: '4.9',
+    image:
+      'https://images.unsplash.com/photo-1505761671935-60b3a7427bad?auto=format&fit=crop&w=900&q=80',
+  },
+  {
+    name: 'Hotel Royal',
+    location: 'Spain',
+    country: 'Spain',
+    price: '$280/night',
+    rating: '4.8',
+    image:
+      'https://images.unsplash.com/photo-1505765050516-f72dcac9c60e?auto=format&fit=crop&w=900&q=80',
+  },
 ];
+
+const hotDeal: Hotel = {
+  name: 'BaLi Motel Vung Tau',
+  location: 'Indonesia',
+  country: 'Indonesia',
+  price: '$580/night',
+  rating: '4.9',
+  image:
+    'https://images.unsplash.com/photo-1501117716987-c8e1ecb210af?auto=format&fit=crop&w=1200&q=80',
+  badge: '25% OFF',
+};
 
 export default function HomeScreen() {
-  const router = useRouter();
-  const [form, setForm] = useState({
-    from: '',
-    to: '',
-    departureDate: '',
-    passengers: '1',
-  });
+  const [selectedCategory, setSelectedCategory] = useState<string>('Hotel');
 
-  const searchDisabled = useMemo(
-    () => !form.from || !form.to || !form.departureDate || !form.passengers,
-    [form]
+  const CategoryPill = ({ label, icon }: Category) => {
+    const isActive = selectedCategory === label;
+
+    return (
+      <Pressable
+        onPress={() => setSelectedCategory(label)}
+        style={({ pressed }) => [
+          styles.categoryPill,
+          isActive && styles.categoryPillActive,
+          pressed && styles.pillPressed,
+        ]}>
+        <Ionicons
+          name={icon}
+          size={20}
+          color={isActive ? '#1e73f6' : '#9aa5b5'}
+        />
+        <Text style={[styles.pillText, isActive && styles.pillTextActive]}>{label}</Text>
+      </Pressable>
+    );
+  };
+
+  const renderHotelCard = ({ item }: { item: Hotel }) => (
+    <View style={styles.hotelCard}>
+      <Image source={item.image} style={styles.hotelImage} contentFit="cover" />
+      <View style={styles.hotelInfo}>
+        <View>
+          <Text style={styles.hotelName}>{item.name}</Text>
+          <View style={styles.locationRow}>
+            <Ionicons name="location-outline" size={16} color="#9aa5b5" />
+            <Text style={styles.locationText}>{item.location}</Text>
+          </View>
+        </View>
+        <View style={styles.priceRow}>
+          <Text style={styles.priceText}>{item.price}</Text>
+          <View style={styles.ratingRow}>
+            <Ionicons name="star" size={14} color="#f9b62d" />
+            <Text style={styles.ratingText}>{item.rating}</Text>
+          </View>
+        </View>
+      </View>
+    </View>
   );
 
-  const handleChange = (key: keyof typeof form, value: string) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const handleSearch = () => {
-    router.push('/services/flights');
-  };
-
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <ThemedView style={styles.section}>
-        <ThemedText type="title">Book your next trip</ThemedText>
-        <View style={styles.inputRow}>
-          <TextInput
-            placeholder="From"
-            value={form.from}
-            onChangeText={(text) => handleChange('from', text)}
-            style={styles.input}
-          />
-          <TextInput
-            placeholder="To"
-            value={form.to}
-            onChangeText={(text) => handleChange('to', text)}
-            style={styles.input}
-          />
-        </View>
-        <View style={styles.inputRow}>
-          <TextInput
-            placeholder="Departure Date"
-            value={form.departureDate}
-            onChangeText={(text) => handleChange('departureDate', text)}
-            style={styles.input}
-          />
-          <TextInput
-            placeholder="Passengers"
-            value={form.passengers}
-            onChangeText={(text) => handleChange('passengers', text)}
-            style={styles.input}
-            keyboardType="number-pad"
-          />
-        </View>
-        <Pressable
-          onPress={handleSearch}
-          style={({ pressed }) => [styles.primaryButton, (pressed || searchDisabled) && styles.buttonDisabled]}
-          disabled={searchDisabled}>
-          <ThemedText style={styles.primaryButtonText}>Search flights</ThemedText>
-        </Pressable>
-      </ThemedView>
-
-      <ThemedView style={styles.section}>
-        <ThemedText type="subtitle" style={styles.sectionTitle}>
-          Quick services
-        </ThemedText>
-        <View style={styles.cardGrid}>
-          {services.map((service) => (
-            <Pressable
-              key={service.label}
-              onPress={() => router.push(service.route)}
-              style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}>
-              <ThemedText type="defaultSemiBold">{service.label}</ThemedText>
-              <ThemedText style={styles.cardDescription}>{service.description}</ThemedText>
-            </Pressable>
-          ))}
-        </View>
-      </ThemedView>
-
-      <ThemedView style={styles.section}>
-        <ThemedText type="subtitle" style={styles.sectionTitle}>
-          Popular routes
-        </ThemedText>
-        {popularRoutes.map((route) => (
-          <View key={`${route.from}-${route.to}`} style={styles.routeRow}>
-            <View>
-              <ThemedText type="defaultSemiBold">
-                {route.from} → {route.to}
-              </ThemedText>
-              <ThemedText style={styles.cardDescription}>Trusted by frequent flyers</ThemedText>
-            </View>
-            <ThemedText type="defaultSemiBold">{route.price}</ThemedText>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" />
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}>
+        <View style={styles.headerRow}>
+          <View style={styles.titleContainer}>
+            <Text style={styles.greeting}>Where you</Text>
+            <Text style={styles.greeting}>wanna go?</Text>
           </View>
-        ))}
-      </ThemedView>
-    </ScrollView>
+          <View style={styles.headerActions}>
+            <Pressable style={styles.iconButton}>
+              <Ionicons name="search" size={20} color="#1e73f6" />
+            </Pressable>
+            <Image
+              source="https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&q=60"
+              style={styles.avatar}
+            />
+          </View>
+        </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.pillRow}>
+          {categories.map((category) => (
+            <CategoryPill key={category.label} {...category} />
+          ))}
+        </ScrollView>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Popular Hotels</Text>
+          <Pressable>
+            <Text style={styles.sectionLink}>See all</Text>
+          </Pressable>
+        </View>
+
+        <FlatList
+          data={popularHotels}
+          renderItem={renderHotelCard}
+          keyExtractor={(item) => item.name}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.hotelList}
+        />
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Hot Deals</Text>
+        </View>
+
+        <View style={styles.hotDealCard}>
+          <Image source={hotDeal.image} style={styles.hotDealImage} contentFit="cover" />
+          <View style={styles.hotDealOverlay} />
+          <View style={styles.hotDealContent}>
+            {hotDeal.badge && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{hotDeal.badge}</Text>
+              </View>
+            )}
+            <View style={styles.hotDealFooter}>
+              <View>
+                <Text style={styles.hotDealTitle}>{hotDeal.name}</Text>
+                <View style={styles.locationRow}>
+                  <Ionicons name="location-outline" size={16} color="#d7e3ff" />
+                  <Text style={styles.hotDealLocation}>{hotDeal.location}</Text>
+                </View>
+              </View>
+              <View style={styles.priceRow}>
+                <Text style={styles.hotDealPrice}>{hotDeal.price}</Text>
+                <View style={styles.ratingRow}>
+                  <Ionicons name="star" size={14} color="#f9b62d" />
+                  <Text style={styles.hotDealRating}>{hotDeal.rating}</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    gap: 16,
-  },
-  section: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    gap: 12,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  input: {
+  safeArea: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#e1e1e1',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#eef2f8',
   },
-  primaryButton: {
-    backgroundColor: '#0a7ea4',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
+  container: {
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+    gap: 20,
   },
-  primaryButtonText: {
-    color: '#fff',
-    fontWeight: '700',
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  sectionTitle: {
-    marginBottom: 6,
-  },
-  cardGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  card: {
-    flexBasis: '48%',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 12,
-    padding: 12,
-    gap: 6,
-    backgroundColor: '#f8fafc',
-  },
-  cardPressed: {
-    opacity: 0.85,
-  },
-  cardDescription: {
-    color: '#6b7280',
-  },
-  routeRow: {
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    marginTop: 10,
+  },
+  titleContainer: {
+    gap: 4,
+  },
+  greeting: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1f2735',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  iconButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#1f2735',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  avatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+  },
+  pillRow: {
+    gap: 10,
+    paddingVertical: 8,
+  },
+  categoryPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    backgroundColor: '#ffffff',
+    shadowColor: '#1f2735',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 3,
+  },
+  categoryPillActive: {
+    backgroundColor: '#e9f1ff',
+  },
+  pillText: {
+    fontSize: 15,
+    color: '#6b7280',
+    fontWeight: '600',
+  },
+  pillTextActive: {
+    color: '#1e73f6',
+  },
+  pillPressed: {
+    opacity: 0.9,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 6,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1f2735',
+  },
+  sectionLink: {
+    color: '#1e73f6',
+    fontWeight: '600',
+  },
+  hotelList: {
+    gap: 14,
+    paddingVertical: 12,
+  },
+  hotelCard: {
+    width: 220,
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    overflow: 'hidden',
+    shadowColor: '#1f2735',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 3,
+    marginRight: 14,
+  },
+  hotelImage: {
+    width: '100%',
+    height: 130,
+  },
+  hotelInfo: {
+    padding: 12,
+    gap: 10,
+  },
+  hotelName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1f2735',
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
+  locationText: {
+    color: '#9aa5b5',
+    fontWeight: '600',
+  },
+  priceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  priceText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1f2735',
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  ratingText: {
+    fontWeight: '700',
+    color: '#1f2735',
+  },
+  hotDealCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#1f2735',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 3,
+  },
+  hotDealImage: {
+    width: '100%',
+    height: 230,
+  },
+  hotDealOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+  },
+  hotDealContent: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    padding: 16,
+    justifyContent: 'space-between',
+  },
+  badge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#f26768',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+  badgeText: {
+    color: '#ffffff',
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  hotDealFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+  },
+  hotDealTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  hotDealLocation: {
+    color: '#d7e3ff',
+    fontWeight: '600',
+  },
+  hotDealPrice: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  hotDealRating: {
+    color: '#ffffff',
+    fontWeight: '700',
   },
 });
