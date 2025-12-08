@@ -1,13 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { ImageSourcePropType } from 'react-native';
-
 import { useMemo, useRef, useState } from 'react';
 
-        
+
 import {
   FlatList,
+  ImageSourcePropType,
   Pressable,
   SafeAreaView,
   StatusBar,
@@ -53,7 +52,7 @@ export default function OnboardingScreen() {
   const illustrationHeight = useMemo(() => Math.min(height * 0.5, 440), [height]);
 
   const onViewableItemsChanged = useRef(
-    ({ viewableItems }: { viewableItems: Array<ViewToken> }) => {
+    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
       if (viewableItems.length > 0) {
         const index = viewableItems[0].index ?? 0;
         setActiveIndex(index);
