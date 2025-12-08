@@ -21,8 +21,21 @@ type Airport = {
   IATA: string;
   ICAO: string;
   Airport_name: string;
-  City: string;
-  Country: string;
+  Location_served: string;
+  Time: string;
+  DST: string | null;
+};
+
+const getCityAndCountry = (airport: Airport | null | undefined) => {
+  if (!airport) return { city: '', country: '' };
+
+  const cleaned = airport.Location_served.replace(/\u00a0/g, ' ');
+  const parts = cleaned.split(',').map((part) => part.trim()).filter(Boolean);
+
+  return {
+    city: parts[0] ?? '',
+    country: parts[parts.length - 1] ?? '',
+  };
 };
 
 type LocationFieldProps = {
@@ -34,18 +47,35 @@ type LocationFieldProps = {
 const airportsData: Airport[] = IATAAirports;
 
 function LocationField({ label, airport, onPress }: LocationFieldProps) {
-  const mainLabel = airport ? `${airport.City}  ${airport.IATA}` : 'Select a city';
+  const { city, country } = getCityAndCountry(airport);
+  const mainLabel = airport ? city || airport.IATA : 'Select a city';
+  const airportLabel = airport
+    ? airport.Airport_name.replace(/\u00a0/g, ' ')
+    : 'Tap to search for an airport';
+  const secondaryLabel = airport
+    ? city && country
+      ? `${city} Airport, ${country}`
+      : airportLabel
+    : 'Tap to search for an airport';
+
   return (
     <Pressable style={styles.locationField} onPress={onPress}>
-      <View style={styles.locationIcon}>
-        <Ionicons name="airplane-outline" size={20} color="#1e73f6" />
-      </View>
-      <View style={styles.locationTextContainer}>
-        <Text style={styles.fieldLabel}>{label}</Text>
-        <Text style={styles.locationPrimary}>{mainLabel}</Text>
-        <Text style={styles.locationSecondary} numberOfLines={1}>
-          {airport ? airport.Airport_name : 'Tap to search for an airport'}
-        </Text>
+      <Text style={styles.locationLabel}>{label}</Text>
+      <View style={styles.locationInput}>
+        <View style={styles.locationIcon}>
+          <Ionicons name="airplane-outline" size={19} color="#666666" />
+        </View>
+        <View style={styles.locationTextContainer}>
+          <View style={styles.locationPrimaryRow}>
+            <Text style={styles.locationPrimary} numberOfLines={1}>
+              {mainLabel}
+            </Text>
+            {airport && <Text style={styles.locationCode}>{airport.IATA}</Text>}
+          </View>
+          <Text style={styles.locationSecondary} numberOfLines={1}>
+            {secondaryLabel}
+          </Text>
+        </View>
       </View>
     </Pressable>
   );
@@ -92,10 +122,11 @@ function SearchModal({
     return airportsData
       .filter(
         (airport) =>
-          airport.City.toLowerCase().includes(lower) ||
+          getCityAndCountry(airport).city.toLowerCase().includes(lower) ||
           airport.IATA.toLowerCase().includes(lower) ||
           airport.Airport_name.toLowerCase().includes(lower) ||
-          airport.Country.toLowerCase().includes(lower),
+          getCityAndCountry(airport).country.toLowerCase().includes(lower) ||
+          airport.Location_served.replace(/\u00a0/g, ' ').toLowerCase().includes(lower),
       )
       .slice(0, 50);
   }, [query]);
@@ -128,10 +159,10 @@ function SearchModal({
                 </View>
                 <View style={styles.listTextContainer}>
                   <Text style={styles.listPrimary} numberOfLines={1}>
-                    {item.City} ({item.IATA})
+                    {getCityAndCountry(item).city || item.IATA} ({item.IATA})
                   </Text>
                   <Text style={styles.listSecondary} numberOfLines={1}>
-                    {item.Airport_name}
+                    {item.Airport_name.replace(/\u00a0/g, ' ')}
                   </Text>
                 </View>
               </Pressable>
@@ -145,10 +176,10 @@ function SearchModal({
 
 export default function FlightsScreen() {
   const [fromAirport, setFromAirport] = useState<Airport | null>(
-    airportsData.find((airport) => airport.IATA === 'DEL') ?? null,
+    airportsData.find((airport) => airport.IATA === 'LHE') ?? null,
   );
   const [toAirport, setToAirport] = useState<Airport | null>(
-    airportsData.find((airport) => airport.IATA === 'CCU') ?? null,
+    airportsData.find((airport) => airport.IATA === 'KHI') ?? null,
   );
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [activeField, setActiveField] = useState<'from' | 'to'>('from');
@@ -190,16 +221,16 @@ export default function FlightsScreen() {
             label="From"
             airport={fromAirport}
             onPress={() => {
-              setActiveField('from');
-              setIsModalVisible(true);
-            }}
-          />
+            setActiveField('from');
+            setIsModalVisible(true);
+          }}
+        />
 
-          <View style={styles.swapWrapper}>
-            <Pressable style={styles.swapButton} onPress={handleSwap} accessibilityLabel="Swap locations">
-              <Ionicons name="swap-vertical" size={18} color="#1e73f6" />
-            </Pressable>
-          </View>
+        <View style={styles.swapWrapper}>
+          <Pressable style={styles.swapButton} onPress={handleSwap} accessibilityLabel="Swap locations">
+            <Ionicons name="swap-vertical" size={18} color="#6a6a6a" />
+          </Pressable>
+        </View>
 
           <LocationField
             label="To"
@@ -293,45 +324,61 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   locationRow: {
-    gap: 12,
+    gap: 14,
     position: 'relative',
-    paddingRight: 44,
+    paddingRight: 40,
   },
   locationField: {
+    gap: 8,
+    borderRadius: 14,
+  },
+  locationLabel: {
+    color: '#7d7d7d',
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
+  locationInput: {
     borderWidth: 1,
-    borderColor: '#e1e6ef',
+    borderColor: '#d7d7d7',
     borderRadius: 14,
     backgroundColor: '#ffffff',
     paddingVertical: 12,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 10,
-    shadowColor: '#0c2047',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 1,
   },
   locationIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
-    backgroundColor: '#e8f1ff',
+    width: 30,
+    height: 30,
     alignItems: 'center',
     justifyContent: 'center',
   },
   locationTextContainer: {
     flex: 1,
-    gap: 2,
+    gap: 4,
+  },
+  locationPrimaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
   },
   locationPrimary: {
     fontSize: 17,
-    fontWeight: '800',
-    color: '#0c2047',
+    fontWeight: '700',
+    color: '#3e3e3e',
+  },
+  locationCode: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#6b6b6b',
+    letterSpacing: 0.3,
   },
   locationSecondary: {
     fontSize: 12,
-    color: '#6e7b93',
+    color: '#747474',
   },
   swapWrapper: {
     position: 'absolute',
@@ -340,19 +387,14 @@ const styles = StyleSheet.create({
     transform: [{ translateY: -24 }],
   },
   swapButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#e1e6ef',
+    borderColor: '#e0e0e0',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#0c2047',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
   },
   detailRow: {
     flexDirection: 'row',
@@ -384,7 +426,7 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#0c2047',
+    color: '#4c4c4c',
     letterSpacing: 0.2,
   },
   detailValue: {
