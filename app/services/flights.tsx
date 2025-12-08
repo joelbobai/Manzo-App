@@ -21,7 +21,7 @@ type Airport = {
   IATA: string;
   ICAO: string;
   Airport_name: string;
-  Location_served: string;
+  Location_served: string | null;
   Time: string;
   DST: string | null;
 };
@@ -29,7 +29,7 @@ type Airport = {
 const getCityAndCountry = (airport: Airport | null | undefined) => {
   if (!airport) return { city: '', country: '' };
 
-  const cleaned = airport.Location_served.replace(/\u00a0/g, ' ');
+  const cleaned = (airport.Location_served ?? '').replace(/\u00a0/g, ' ');
   const parts = cleaned.split(',').map((part) => part.trim()).filter(Boolean);
 
   return {
@@ -126,7 +126,10 @@ function SearchModal({
           airport.IATA.toLowerCase().includes(lower) ||
           airport.Airport_name.toLowerCase().includes(lower) ||
           getCityAndCountry(airport).country.toLowerCase().includes(lower) ||
-          airport.Location_served.replace(/\u00a0/g, ' ').toLowerCase().includes(lower),
+          (airport.Location_served ?? '')
+            .replace(/\u00a0/g, ' ')
+            .toLowerCase()
+            .includes(lower),
       )
       .slice(0, 50);
   }, [query]);
