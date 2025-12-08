@@ -1,7 +1,10 @@
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { useRef, useState } from 'react';
+
+import { useMemo, useRef, useState } from 'react';
+
+        
 import {
   View,
   Text,
@@ -11,6 +14,7 @@ import {
   FlatList,
   ViewToken,
   StatusBar,
+  useWindowDimensions,
 } from 'react-native';
 
 type Slide = {
@@ -42,6 +46,9 @@ const slides: Slide[] = [
 export default function OnboardingScreen() {
   const [activeIndex, setActiveIndex] = useState(0);
   const flatListRef = useRef<FlatList<Slide>>(null);
+  const { width, height } = useWindowDimensions();
+
+  const illustrationHeight = useMemo(() => Math.min(height * 0.5, 440), [height]);
 
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: Array<ViewToken> }) => {
@@ -58,6 +65,7 @@ export default function OnboardingScreen() {
       return;
     }
 
+
     const nextIndex = activeIndex + 1;
     flatListRef.current?.scrollToIndex({ index: nextIndex });
     setActiveIndex(nextIndex);
@@ -68,10 +76,15 @@ export default function OnboardingScreen() {
   };
 
   const renderItem = ({ item }: { item: Slide }) => (
-    <View style={styles.slide}>
-      <Image source={{ uri: item.image }} style={styles.illustration} contentFit="contain" />
+    <View style={[styles.slide, { width }]}> 
+      <Image
+        source={{ uri: item.image }}
+        style={[styles.illustration, { height: illustrationHeight }]}
+        contentFit="contain"
+      />
       <Text style={styles.title}>{item.title}</Text>
       <Text style={styles.subtitle}>{item.subtitle}</Text>
+
 
       {item.cta && (
         <Pressable style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]} onPress={handleNext}>
@@ -96,6 +109,9 @@ export default function OnboardingScreen() {
         bounces={false}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{ viewAreaCoveragePercentThreshold: 60 }}
+        getItemLayout={(_, index) => ({ length: width, offset: width * index, index })}
+        snapToInterval={width}
+        decelerationRate="fast"
       />
 
       <View style={styles.footer}>
@@ -123,15 +139,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
   },
   slide: {
-    width: '100%',
     alignItems: 'center',
     paddingHorizontal: 26,
     paddingTop: 40,
-    gap: 18,
+    paddingBottom: 32,
+    gap: 16,
   },
   illustration: {
     width: '88%',
-    height: 420,
+    maxHeight: 480,
   },
   title: {
     fontSize: 28,
