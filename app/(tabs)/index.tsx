@@ -1,98 +1,189 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+
+const services = [
+  { label: 'Flights', route: '/services/flights', description: 'Search and book flights' },
+  { label: 'Hotels', route: '/services/hotels', description: 'Find stays worldwide' },
+  { label: 'Rides', route: '/services/rides', description: 'Airport and city rides' },
+  { label: 'Visa', route: '/services/visa', description: 'Visa guidance & support' },
+];
+
+const popularRoutes = [
+  { from: 'Lagos', to: 'London', price: '$820' },
+  { from: 'Abuja', to: 'Dubai', price: '$680' },
+  { from: 'Accra', to: 'Nairobi', price: '$540' },
+];
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const router = useRouter();
+  const [form, setForm] = useState({
+    from: '',
+    to: '',
+    departureDate: '',
+    passengers: '1',
+  });
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
+  const searchDisabled = useMemo(
+    () => !form.from || !form.to || !form.departureDate || !form.passengers,
+    [form]
+  );
+
+  const handleChange = (key: keyof typeof form, value: string) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleSearch = () => {
+    router.push('/services/flights');
+  };
+
+  return (
+    <ScrollView contentContainerStyle={styles.container}>
+      <ThemedView style={styles.section}>
+        <ThemedText type="title">Book your next trip</ThemedText>
+        <View style={styles.inputRow}>
+          <TextInput
+            placeholder="From"
+            value={form.from}
+            onChangeText={(text) => handleChange('from', text)}
+            style={styles.input}
+          />
+          <TextInput
+            placeholder="To"
+            value={form.to}
+            onChangeText={(text) => handleChange('to', text)}
+            style={styles.input}
+          />
+        </View>
+        <View style={styles.inputRow}>
+          <TextInput
+            placeholder="Departure Date"
+            value={form.departureDate}
+            onChangeText={(text) => handleChange('departureDate', text)}
+            style={styles.input}
+          />
+          <TextInput
+            placeholder="Passengers"
+            value={form.passengers}
+            onChangeText={(text) => handleChange('passengers', text)}
+            style={styles.input}
+            keyboardType="number-pad"
+          />
+        </View>
+        <Pressable
+          onPress={handleSearch}
+          style={({ pressed }) => [styles.primaryButton, (pressed || searchDisabled) && styles.buttonDisabled]}
+          disabled={searchDisabled}>
+          <ThemedText style={styles.primaryButtonText}>Search flights</ThemedText>
+        </Pressable>
       </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
+
+      <ThemedView style={styles.section}>
+        <ThemedText type="subtitle" style={styles.sectionTitle}>
+          Quick services
         </ThemedText>
+        <View style={styles.cardGrid}>
+          {services.map((service) => (
+            <Pressable
+              key={service.label}
+              onPress={() => router.push(service.route)}
+              style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}>
+              <ThemedText type="defaultSemiBold">{service.label}</ThemedText>
+              <ThemedText style={styles.cardDescription}>{service.description}</ThemedText>
+            </Pressable>
+          ))}
+        </View>
       </ThemedView>
-    </ParallaxScrollView>
+
+      <ThemedView style={styles.section}>
+        <ThemedText type="subtitle" style={styles.sectionTitle}>
+          Popular routes
+        </ThemedText>
+        {popularRoutes.map((route) => (
+          <View key={`${route.from}-${route.to}`} style={styles.routeRow}>
+            <View>
+              <ThemedText type="defaultSemiBold">
+                {route.from} → {route.to}
+              </ThemedText>
+              <ThemedText style={styles.cardDescription}>Trusted by frequent flyers</ThemedText>
+            </View>
+            <ThemedText type="defaultSemiBold">{route.price}</ThemedText>
+          </View>
+        ))}
+      </ThemedView>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    padding: 16,
+    gap: 16,
+  },
+  section: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    gap: 12,
+  },
+  inputRow: {
     flexDirection: 'row',
+    gap: 10,
+  },
+  input: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#e1e1e1',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: '#f9fafb',
+  },
+  primaryButton: {
+    backgroundColor: '#0a7ea4',
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
-    gap: 8,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  primaryButtonText: {
+    color: '#fff',
+    fontWeight: '700',
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+  sectionTitle: {
+    marginBottom: 6,
+  },
+  cardGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  card: {
+    flexBasis: '48%',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    padding: 12,
+    gap: 6,
+    backgroundColor: '#f8fafc',
+  },
+  cardPressed: {
+    opacity: 0.85,
+  },
+  cardDescription: {
+    color: '#6b7280',
+  },
+  routeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
 });
