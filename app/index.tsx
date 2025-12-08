@@ -1,26 +1,27 @@
-import { router } from 'expo-router';
-import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import { router } from 'expo-router';
+import { ImageSourcePropType } from 'react-native';
 
 import { useMemo, useRef, useState } from 'react';
 
         
 import {
-  View,
-  Text,
-  StyleSheet,
+  FlatList,
   Pressable,
   SafeAreaView,
-  FlatList,
-  ViewToken,
   StatusBar,
+  StyleSheet,
+  Text,
   useWindowDimensions,
+  View,
+  ViewToken,
 } from 'react-native';
 
 type Slide = {
   title: string;
   subtitle: string;
-  image: string;
+  image: ImageSourcePropType;
   cta?: string;
 };
 
@@ -28,19 +29,20 @@ const slides: Slide[] = [
   {
     title: 'Booking',
     subtitle: 'Book a flight through simple steps and pay securely.',
-    image: 'https://i.imgur.com/MDnpslF.png',
+    image: require('./assets/img/Flight Booking-pana.png'),  
   },
-  {
-    title: 'Get price alert',
-    subtitle: 'Save your search and get notifications when prices change.',
-    image: 'https://i.imgur.com/98Qjb5X.png',
-    cta: 'Enable Notification',
-  },
+ 
   {
     title: 'Search flights',
     subtitle: 'Search and compare prices for flights around the world.',
-    image: 'https://i.imgur.com/DmqkcGr.png',
+    image:  require('./assets/img/Flight Booking-bro.png'),
   },
+   {
+    title: 'Get price alert',
+    subtitle: 'Save your search and get notifications when prices change.',
+    image:  require('./assets/img/Subscriber-bro.png'),
+    cta: 'Enable Notification',
+  }
 ];
 
 export default function OnboardingScreen() {
@@ -78,7 +80,7 @@ export default function OnboardingScreen() {
   const renderItem = ({ item }: { item: Slide }) => (
     <View style={[styles.slide, { width }]}> 
       <Image
-        source={{ uri: item.image }}
+        source={item.image}
         style={[styles.illustration, { height: illustrationHeight }]}
         contentFit="contain"
       />
