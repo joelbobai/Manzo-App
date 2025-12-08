@@ -26,20 +26,20 @@ type Slide = {
 
 const slides: Slide[] = [
   {
-    title: 'Booking',
-    subtitle: 'Book a flight through simple steps and pay securely.',
-    image: require('./assets/img/Flight Booking-pana.png'),  
+    title: 'Search Flights',
+    subtitle: 'Find and compare the best flight deals worldwide in seconds.',
+    image: require('../assets/img/Flight-Booking-pana.png'),  
   },
  
   {
-    title: 'Search flights',
-    subtitle: 'Search and compare prices for flights around the world.',
-    image:  require('./assets/img/Flight Booking-bro.png'),
+    title: 'Easy Booking',
+    subtitle: 'Book your flight in just a few steps with fast and secure payments.',
+    image:  require('../assets/img/Flight-Booking-bro.png'),
   },
    {
-    title: 'Get price alert',
-    subtitle: 'Save your search and get notifications when prices change.',
-    image:  require('./assets/img/Subscriber-bro.png'),
+    title: 'Smart Price Alerts',
+    subtitle: 'Track prices and get instant alerts when fares drop.',
+    image:  require('../assets/img/Subscriber-bro.png'),
     cta: 'Enable Notification',
   }
 ];

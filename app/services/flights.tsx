@@ -1,8 +1,9 @@
 import { Image } from 'expo-image';
+import { StatusBar } from 'expo-status-bar';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 const flightHeroImage =
-  'https://images.unsplash.com/photo-1504198266285-165a04d0c12e?auto=format&fit=crop&w=1400&q=80';
+  'https://images.unsplash.com/photo-1670699054598-776d35923e75?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 
 type FormFieldProps = {
   label: string;
@@ -25,6 +26,7 @@ function FormField({ label, placeholder }: FormFieldProps) {
 export default function FlightsScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <StatusBar style="light" />
       <View style={styles.hero}>
         <Image source={flightHeroImage} style={StyleSheet.absoluteFillObject} contentFit="cover" />
         <View style={styles.heroOverlay} />
@@ -62,13 +64,13 @@ export default function FlightsScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
+    // padding: 16,
     gap: 20,
     backgroundColor: '#f5f7fb',
   },
   hero: {
     height: 260,
-    borderRadius: 20,
+    // borderRadius: 20,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -110,6 +112,7 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 3,
     marginTop: -60,
+    marginHorizontal: 16,
   },
   formTitle: {
     fontSize: 18,
