@@ -30,6 +30,8 @@ type Hotel = {
 const categories: Category[] = [
   { label: 'Hotel', icon: 'bed-outline' },
   { label: 'Flight', icon: 'airplane-outline' },
+  { label: 'Ride', icon: 'car-outline' },
+  { label: 'Visa Application', icon: 'document-text-outline' },
   { label: 'Place', icon: 'map-outline' },
   { label: 'Food', icon: 'fast-food-outline' },
 ];
