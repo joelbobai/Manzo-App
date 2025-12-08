@@ -47,7 +47,7 @@ type LocationFieldProps = {
   onPress: () => void;
 };
 
-const airportsData: Airport[] = IATAAirports;
+const airportsData = IATAAirports as Airport[];
 
 function LocationField({ label, airport, onPress }: LocationFieldProps) {
   const { city, country } = getCityAndCountry(airport);
@@ -86,7 +86,7 @@ function LocationField({ label, airport, onPress }: LocationFieldProps) {
 type DetailFieldProps = {
   label: string;
   value: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
   muted?: boolean;
 };
 
@@ -223,31 +223,35 @@ export default function FlightsScreen() {
       <View style={styles.formCard}>
         <Text style={styles.formTitle}>Search flights</Text>
 
-        <View style={styles.locationRow}>
-          <LocationField
-            label="From"
-            airport={fromAirport}
-            onPress={() => {
-            setActiveField('from');
-            setIsModalVisible(true);
-          }}
-        />
+       <View style={styles.locationRow}>
+  <LocationField
+    label="From"
+    airport={fromAirport}
+    onPress={() => {
+      setActiveField('from');
+      setIsModalVisible(true);
+    }}
+  />
 
-        <View style={styles.swapWrapper}>
-          <Pressable style={styles.swapButton} onPress={handleSwap} accessibilityLabel="Swap locations">
-            <Ionicons name="swap-vertical" size={18} color="#6a6a6a" />
-          </Pressable>
-        </View>
+  <View style={styles.swapWrapper}>
+    <Pressable
+      style={styles.swapButton}
+      onPress={handleSwap}
+      accessibilityLabel="Swap locations"
+    >
+      <Ionicons name="swap-vertical" size={18} color="#6a6a6a" />
+    </Pressable>
+  </View>
 
-          <LocationField
-            label="To"
-            airport={toAirport}
-            onPress={() => {
-              setActiveField('to');
-              setIsModalVisible(true);
-            }}
-          />
-        </View>
+  <LocationField
+    label="To"
+    airport={toAirport}
+    onPress={() => {
+      setActiveField('to');
+      setIsModalVisible(true);
+    }}
+  />
+</View>
 
         <View style={styles.detailRow}>
           <DetailField label="Departure" value="15/07/2022" icon="calendar-outline" />
