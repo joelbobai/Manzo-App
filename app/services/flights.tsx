@@ -37,8 +37,8 @@ function LocationField({ label, airport, onPress }: LocationFieldProps) {
   const mainLabel = airport ? `${airport.City}  ${airport.IATA}` : 'Select a city';
   return (
     <Pressable style={styles.locationField} onPress={onPress}>
-      <View style={styles.locationIcon}> 
-        <Ionicons name="location-outline" size={20} color="#1e73f6" />
+      <View style={styles.locationIcon}>
+        <Ionicons name="airplane-outline" size={20} color="#1e73f6" />
       </View>
       <View style={styles.locationTextContainer}>
         <Text style={styles.fieldLabel}>{label}</Text>
@@ -186,33 +186,29 @@ export default function FlightsScreen() {
         <Text style={styles.formTitle}>Search flights</Text>
 
         <View style={styles.locationRow}>
-          <View style={styles.flexOne}>
-            <LocationField
-              label="From"
-              airport={fromAirport}
-              onPress={() => {
-                setActiveField('from');
-                setIsModalVisible(true);
-              }}
-            />
-          </View>
+          <LocationField
+            label="From"
+            airport={fromAirport}
+            onPress={() => {
+              setActiveField('from');
+              setIsModalVisible(true);
+            }}
+          />
 
           <View style={styles.swapWrapper}>
             <Pressable style={styles.swapButton} onPress={handleSwap} accessibilityLabel="Swap locations">
-              <Ionicons name="swap-vertical" size={20} color="#1e73f6" />
+              <Ionicons name="swap-vertical" size={18} color="#1e73f6" />
             </Pressable>
           </View>
 
-          <View style={styles.flexOne}>
-            <LocationField
-              label="To"
-              airport={toAirport}
-              onPress={() => {
-                setActiveField('to');
-                setIsModalVisible(true);
-              }}
-            />
-          </View>
+          <LocationField
+            label="To"
+            airport={toAirport}
+            onPress={() => {
+              setActiveField('to');
+              setIsModalVisible(true);
+            }}
+          />
         </View>
 
         <View style={styles.detailRow}>
@@ -297,23 +293,29 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    gap: 12,
+    position: 'relative',
+    paddingRight: 44,
   },
   locationField: {
     borderWidth: 1,
-    borderColor: '#d5deeb',
-    borderRadius: 16,
-    backgroundColor: '#f8fbff',
-    padding: 12,
+    borderColor: '#e1e6ef',
+    borderRadius: 14,
+    backgroundColor: '#ffffff',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
     flexDirection: 'row',
     gap: 10,
+    shadowColor: '#0c2047',
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 1,
   },
   locationIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 12,
     backgroundColor: '#e8f1ff',
     alignItems: 'center',
     justifyContent: 'center',
@@ -323,25 +325,34 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   locationPrimary: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
     color: '#0c2047',
   },
   locationSecondary: {
     fontSize: 12,
-    color: '#50607a',
+    color: '#6e7b93',
   },
   swapWrapper: {
-    alignSelf: 'stretch',
-    justifyContent: 'center',
+    position: 'absolute',
+    right: 0,
+    top: '50%',
+    transform: [{ translateY: -24 }],
   },
   swapButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#e8f1ff',
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e1e6ef',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#0c2047',
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   detailRow: {
     flexDirection: 'row',
