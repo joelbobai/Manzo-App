@@ -1,7 +1,10 @@
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+
 import { useMemo, useRef, useState } from 'react';
+
+        
 import {
   View,
   Text,
@@ -62,6 +65,7 @@ export default function OnboardingScreen() {
       return;
     }
 
+
     const nextIndex = activeIndex + 1;
     flatListRef.current?.scrollToIndex({ index: nextIndex });
     setActiveIndex(nextIndex);
@@ -80,6 +84,7 @@ export default function OnboardingScreen() {
       />
       <Text style={styles.title}>{item.title}</Text>
       <Text style={styles.subtitle}>{item.subtitle}</Text>
+
 
       {item.cta && (
         <Pressable style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]} onPress={handleNext}>
