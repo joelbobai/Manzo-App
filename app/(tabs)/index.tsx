@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import {
   FlatList,
@@ -71,12 +72,20 @@ const hotDeal: Hotel = {
 export default function HomeScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string>('Hotel');
 
+  const handleCategoryPress = (label: string) => {
+    setSelectedCategory(label);
+
+    if (label === 'Flight') {
+      router.push('/services/flights');
+    }
+  };
+
   const CategoryPill = ({ label, icon }: Category) => {
     const isActive = selectedCategory === label;
 
     return (
       <Pressable
-        onPress={() => setSelectedCategory(label)}
+        onPress={() => handleCategoryPress(label)}
         style={({ pressed }) => [
           styles.categoryPill,
           isActive && styles.categoryPillActive,
