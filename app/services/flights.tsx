@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -17,6 +18,7 @@ type DatePickerTarget = { type: 'departure' | 'return' | 'leg'; legId?: string }
 
 const flightHeroImage =
   'https://images.unsplash.com/photo-1670699054598-776d35923e75?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
+const SEARCH_API_URL = process.env.EXPO_PUBLIC_FLIGHT_SEARCH_URL ?? '';
 
 type Airport = {
   IATA: string;
@@ -44,6 +46,33 @@ const getAirportName = (airport: Airport | null | undefined) =>
 
 const toLowerSafe = (value?: string | null) => (value ?? '').toLowerCase();
 
+const normalizeCabinClass = (value: string) => {
+  const normalized = value.toLowerCase();
+
+  if (normalized.includes('premium')) return 'PREMIUM_ECONOMY';
+  if (normalized.includes('business')) return 'BUSINESS';
+  if (normalized.includes('first')) return 'FIRST';
+
+  return 'ECONOMY';
+};
+
+const formatDateForApi = (date: Date | null) => {
+  if (!date) return '';
+
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+};
+
+const getAirportLabel = (airport: Airport | null) => {
+  if (!airport) return '';
+
+  const airportName = getAirportName(airport) || airport.IATA;
+  return `${airportName} (${airport.IATA})`;
+};
+
 type LocationFieldProps = {
   label: string;
   airport?: Airport | null;
@@ -65,6 +94,32 @@ type PassengerCounts = {
   adults: number;
   children: number;
   infants: number;
+};
+
+type OneWayOrRoundPayload = {
+  flexible: boolean;
+  currencyCode: string;
+  passenger: PassengerCounts & { travelClass: string };
+  flightSearch: {
+    id: number;
+    originLocationCode: string;
+    destinationLocationCode: string;
+    departureDateTimeRange: string;
+  }[];
+};
+
+type MultiCityPayload = {
+  currencyCode: string;
+  passenger: PassengerCounts;
+  flightSearch: {
+    id: number;
+    from: string;
+    to: string;
+    departureDate: string;
+    originLocationCode: string;
+    destinationLocationCode: string;
+    tripClass: string;
+  }[];
 };
 
 function LocationField({ label, airport, onPress }: LocationFieldProps) {
@@ -649,6 +704,107 @@ export default function FlightsScreen() {
     }
   };
 
+  const buildOneWayOrRoundPayload = (): OneWayOrRoundPayload | null => {
+    if (!fromAirport || !toAirport) {
+      Alert.alert('Missing details', 'Please select both departure and destination airports.');
+      return null;
+    }
+
+    const flightSearch = [
+      {
+        id: 1,
+        originLocationCode: fromAirport.IATA,
+        destinationLocationCode: toAirport.IATA,
+        departureDateTimeRange: formatDateForApi(departureDate),
+      },
+    ];
+
+    if (tripType === 'roundTrip') {
+      if (!returnDate) {
+        Alert.alert('Missing details', 'Please select a return date for your round trip.');
+        return null;
+      }
+
+      flightSearch.push({
+        id: 2,
+        originLocationCode: toAirport.IATA,
+        destinationLocationCode: fromAirport.IATA,
+        departureDateTimeRange: formatDateForApi(returnDate),
+      });
+    }
+
+    return {
+      flexible: flexibleDates,
+      currencyCode: 'NGN',
+      passenger: {
+        ...passengerCounts,
+        travelClass: normalizeCabinClass(cabinClass),
+      },
+      flightSearch,
+    };
+  };
+
+  const buildMultiCityPayload = (): MultiCityPayload | null => {
+    const incompleteLeg = legs.find(
+      (leg) => !leg.fromAirport || !leg.toAirport || !leg.date,
+    );
+
+    if (incompleteLeg) {
+      Alert.alert(
+        'Incomplete leg',
+        'Please make sure every multi-city leg has departure, destination, and date.',
+      );
+      return null;
+    }
+
+    return {
+      currencyCode: 'NGN',
+      passenger: { ...passengerCounts },
+      flightSearch: legs.map((leg, index) => ({
+        id: index + 1,
+        from: getAirportLabel(leg.fromAirport),
+        to: getAirportLabel(leg.toAirport),
+        departureDate: formatDateForApi(leg.date),
+        originLocationCode: leg.fromAirport?.IATA ?? '',
+        destinationLocationCode: leg.toAirport?.IATA ?? '',
+        tripClass: normalizeCabinClass(leg.cabinClass),
+      })),
+    };
+  };
+
+  const handleSearch = async () => {
+    const payload =
+      tripType === 'multiCity' ? buildMultiCityPayload() : buildOneWayOrRoundPayload();
+
+    if (!payload) return;
+
+    console.log('Flight search payload', payload);
+
+    if (!SEARCH_API_URL) {
+      Alert.alert('Payload ready', JSON.stringify(payload, null, 2));
+      return;
+    }
+
+    try {
+      const response = await fetch(SEARCH_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error((result as { message?: string })?.message ?? 'Search request failed');
+      }
+
+      Alert.alert('Search submitted', 'Your flight search was sent to the API.');
+    } catch (error) {
+      console.error('Flight search error', error);
+      Alert.alert('Search failed', (error as Error).message);
+    }
+  };
+
   const selectedCabinClass =
     tripType === 'multiCity' && activeCabinLeg
       ? legs.find((leg) => leg.id === activeCabinLeg)?.cabinClass ?? cabinClass
@@ -862,7 +1018,10 @@ export default function FlightsScreen() {
           <Text style={styles.flexibleLabel}>My Dates Are Flexible</Text>
         </Pressable>
 
-        <Pressable style={({ pressed }) => [styles.searchButton, pressed && styles.buttonPressed]}>
+        <Pressable
+          style={({ pressed }) => [styles.searchButton, pressed && styles.buttonPressed]}
+          onPress={handleSearch}
+        >
           <Text style={styles.searchButtonText}>Search</Text>
         </Pressable>
       </View>
