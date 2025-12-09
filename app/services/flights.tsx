@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   FlatList,
   Modal,
@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import IATAAirports from '../../data/IATA_airports.json';
+type DatePickerTarget = { type: 'departure' | 'return' | 'leg'; legId?: string };
 
 const flightHeroImage =
   'https://images.unsplash.com/photo-1670699054598-776d35923e75?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
@@ -56,7 +57,7 @@ type FlightLeg = {
   id: string;
   fromAirport: Airport | null;
   toAirport: Airport | null;
-  date: string;
+  date: Date | null;
   cabinClass: string;
 };
 
@@ -345,6 +346,129 @@ function CabinClassModal({
   );
 }
 
+function isSameDay(a: Date, b: Date) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+function DatePickerModal({
+  visible,
+  initialDate,
+  onClose,
+  onConfirm,
+}: {
+  visible: boolean;
+  initialDate: Date;
+  onClose: () => void;
+  onConfirm: (date: Date) => void;
+}) {
+  const [currentMonth, setCurrentMonth] = useState(initialDate);
+  const [selectedDate, setSelectedDate] = useState(initialDate);
+
+  useEffect(() => {
+    setCurrentMonth(initialDate);
+    setSelectedDate(initialDate);
+  }, [initialDate]);
+
+  const daysInMonth = new Date(
+    currentMonth.getFullYear(),
+    currentMonth.getMonth() + 1,
+    0,
+  ).getDate();
+  const startDay = new Date(
+    currentMonth.getFullYear(),
+    currentMonth.getMonth(),
+    1,
+  ).getDay();
+
+  const days: (Date | null)[] = [
+    ...Array.from({ length: startDay }, () => null),
+    ...Array.from({ length: daysInMonth }, (_, idx) =>
+      new Date(currentMonth.getFullYear(), currentMonth.getMonth(), idx + 1),
+    ),
+  ];
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent>
+      <View style={styles.modalOverlay}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <View style={styles.datePickerCard}>
+          <View style={styles.dateHeader}>
+            <Pressable
+              style={({ pressed }) => [styles.dateNavButton, pressed && styles.buttonPressed]}
+              onPress={() =>
+                setCurrentMonth(
+                  new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1),
+                )
+              }
+              accessibilityLabel="Previous month"
+            >
+              <Ionicons name="chevron-back" size={18} color="#1e73f6" />
+            </Pressable>
+            <Text style={styles.modalTitle}>
+              {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
+            </Text>
+            <Pressable
+              style={({ pressed }) => [styles.dateNavButton, pressed && styles.buttonPressed]}
+              onPress={() =>
+                setCurrentMonth(
+                  new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1),
+                )
+              }
+              accessibilityLabel="Next month"
+            >
+              <Ionicons name="chevron-forward" size={18} color="#1e73f6" />
+            </Pressable>
+          </View>
+
+          <View style={styles.weekRow}>
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+              <Text key={day} style={styles.weekLabel}>
+                {day}
+              </Text>
+            ))}
+          </View>
+
+          <View style={styles.calendarGrid}>
+            {days.map((day, idx) => {
+              const isSelected = day ? isSameDay(day, selectedDate) : false;
+
+              return (
+                <Pressable
+                  key={idx}
+                  disabled={!day}
+                  style={({ pressed }) => [
+                    styles.dayCell,
+                    !day && styles.dayCellEmpty,
+                    isSelected && styles.dayCellSelected,
+                    pressed && day && styles.buttonPressed,
+                  ]}
+                  onPress={() => day && setSelectedDate(day)}
+                  accessibilityLabel={day ? `Select ${day.toDateString()}` : undefined}
+                >
+                  <Text style={[styles.dayLabel, isSelected && styles.dayLabelSelected]}>
+                    {day ? day.getDate() : ''}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <Pressable
+            style={({ pressed }) => [styles.searchButton, pressed && styles.buttonPressed]}
+            onPress={() => onConfirm(selectedDate)}
+          >
+            <Text style={styles.searchButtonText}>Confirm date</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function FlightsScreen() {
   const [fromAirport, setFromAirport] = useState<Airport | null>(
     airportsData.find((airport) => airport.IATA === 'LHE') ?? null,
@@ -354,8 +478,8 @@ export default function FlightsScreen() {
   );
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [tripType, setTripType] = useState<'oneWay' | 'roundTrip' | 'multiCity'>('roundTrip');
-  const [departureDate] = useState('15/07/2022');
-  const [returnDate] = useState('+ Add Return Date');
+  const [departureDate, setDepartureDate] = useState<Date>(new Date('2022-07-15'));
+  const [returnDate, setReturnDate] = useState<Date | null>(null);
   const [passengerCounts, setPassengerCounts] = useState<PassengerCounts>({
     adults: 1,
     children: 0,
@@ -378,17 +502,55 @@ export default function FlightsScreen() {
       id: 'leg-1',
       fromAirport: airportsData.find((airport) => airport.IATA === 'LHE') ?? null,
       toAirport: airportsData.find((airport) => airport.IATA === 'KHI') ?? null,
-      date: '15/07/2022',
+      date: new Date('2022-07-15'),
       cabinClass: 'Economy',
     },
     {
       id: 'leg-2',
       fromAirport: null,
       toAirport: null,
-      date: '17/07/2022',
+      date: new Date('2022-07-17'),
       cabinClass: 'Economy',
     },
   ]);
+
+  const [datePickerConfig, setDatePickerConfig] = useState<{
+    target: DatePickerTarget;
+    date: Date;
+  } | null>(null);
+
+  const formatDateLabel = (date: Date | null, emptyLabel = 'Select Date') =>
+    date ? date.toLocaleDateString('en-GB') : emptyLabel;
+
+  const getInitialDateForPicker = (target: DatePickerTarget) => {
+    if (target.type === 'departure') return departureDate;
+    if (target.type === 'return') return returnDate ?? departureDate;
+
+    const legDate = legs.find((leg) => leg.id === target.legId)?.date;
+    return legDate ?? departureDate;
+  };
+
+  const openDatePicker = (target: DatePickerTarget) => {
+    const nextDate = getInitialDateForPicker(target);
+    setDatePickerConfig({ target, date: nextDate });
+  };
+
+  const applyDateSelection = (target: DatePickerTarget, date: Date) => {
+    if (target.type === 'departure') {
+      setDepartureDate(date);
+    } else if (target.type === 'return') {
+      setReturnDate(date);
+    } else if (target.legId) {
+      setLegs((prev) => prev.map((leg) => (leg.id === target.legId ? { ...leg, date } : leg)));
+    }
+  };
+
+  const handleConfirmDate = (date: Date) => {
+    if (datePickerConfig) {
+      applyDateSelection(datePickerConfig.target, date);
+    }
+    setDatePickerConfig(null);
+  };
 
   const tripOptions: { key: typeof tripType; label: string }[] = [
     { key: 'oneWay', label: 'One way' },
@@ -440,14 +602,14 @@ export default function FlightsScreen() {
   const addLeg = () => {
     setLegs((prev) => [
       ...prev,
-      {
-        id: `leg-${prev.length + 1}`,
-        fromAirport: null,
-        toAirport: null,
-        date: 'Select Date',
-        cabinClass: cabinClassOptions[0],
-      },
-    ]);
+        {
+          id: `leg-${prev.length + 1}`,
+          fromAirport: null,
+          toAirport: null,
+          date: null,
+          cabinClass: cabinClassOptions[0],
+        },
+      ]);
   };
 
   const removeLeg = (legId: string) => {
@@ -535,9 +697,20 @@ export default function FlightsScreen() {
             </View>
 
             <View style={styles.detailRow}>
-              <DetailField label="Departure" value={departureDate} icon="calendar-outline" />
+              <DetailField
+                label="Departure"
+                value={formatDateLabel(departureDate)}
+                icon="calendar-outline"
+                onPress={() => openDatePicker({ type: 'departure' })}
+              />
               {tripType === 'roundTrip' && (
-                <DetailField label="Return" value={returnDate} icon="return-up-forward" muted />
+                <DetailField
+                  label="Return"
+                  value={formatDateLabel(returnDate, '+ Add Return Date')}
+                  icon="return-up-forward"
+                  muted={!returnDate}
+                  onPress={() => openDatePicker({ type: 'return' })}
+                />
               )}
             </View>
 
@@ -616,7 +789,12 @@ export default function FlightsScreen() {
                 </View>
 
                 <View style={styles.detailRow}>
-                  <DetailField label="Departure" value={leg.date} icon="calendar-outline" />
+                  <DetailField
+                    label="Departure"
+                    value={formatDateLabel(leg.date)}
+                    icon="calendar-outline"
+                    onPress={() => openDatePicker({ type: 'leg', legId: leg.id })}
+                  />
                   <DetailField
                     label="Cabin"
                     value={leg.cabinClass}
@@ -679,6 +857,13 @@ export default function FlightsScreen() {
         }}
         selected={selectedCabinClass}
         onSelect={handleSelectCabin}
+      />
+
+      <DatePickerModal
+        visible={!!datePickerConfig}
+        initialDate={datePickerConfig?.date ?? new Date()}
+        onClose={() => setDatePickerConfig(null)}
+        onConfirm={handleConfirmDate}
       />
     </ScrollView>
   );
@@ -1080,5 +1265,70 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#1e73f6',
     fontWeight: '700',
+  },
+  datePickerCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    padding: 16,
+    marginHorizontal: 16,
+    marginTop: 'auto',
+    marginBottom: 18,
+    gap: 12,
+  },
+  dateHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dateNavButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#dce6f3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f8fbff',
+  },
+  weekRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  weekLabel: {
+    width: `${100 / 7}%`,
+    textAlign: 'center',
+    color: '#7a8aa7',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  dayCell: {
+    width: `${(100 - 6 * 6) / 7}%`,
+    aspectRatio: 1,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#dce6f3',
+    backgroundColor: '#f8fbff',
+  },
+  dayCellEmpty: {
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+  },
+  dayCellSelected: {
+    backgroundColor: '#1e73f6',
+    borderColor: '#1e73f6',
+  },
+  dayLabel: {
+    color: '#0c2047',
+    fontWeight: '700',
+  },
+  dayLabelSelected: {
+    color: '#ffffff',
   },
 });
