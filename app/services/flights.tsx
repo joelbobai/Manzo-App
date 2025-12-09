@@ -486,6 +486,7 @@ export default function FlightsScreen() {
     infants: 0,
   });
   const [cabinClass, setCabinClass] = useState('Economy');
+  const [flexibleDates, setFlexibleDates] = useState(false);
   const [passengerModalVisible, setPassengerModalVisible] = useState(false);
   const [cabinModalVisible, setCabinModalVisible] = useState(false);
   const [activeCabinLeg, setActiveCabinLeg] = useState<string | null>(null);
@@ -848,6 +849,19 @@ export default function FlightsScreen() {
           </>
         )}
 
+        <Pressable
+          style={({ pressed }) => [styles.flexibleRow, pressed && styles.buttonPressed]}
+          onPress={() => setFlexibleDates((prev) => !prev)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: flexibleDates }}
+          accessibilityLabel="My dates are flexible"
+        >
+          <View style={[styles.checkboxBase, flexibleDates && styles.checkboxChecked]}>
+            {flexibleDates && <Ionicons name="checkmark" size={14} color="#ffffff" />}
+          </View>
+          <Text style={styles.flexibleLabel}>My Dates Are Flexible</Text>
+        </Pressable>
+
         <Pressable style={({ pressed }) => [styles.searchButton, pressed && styles.buttonPressed]}>
           <Text style={styles.searchButtonText}>Search</Text>
         </Pressable>
@@ -1141,6 +1155,31 @@ const styles = StyleSheet.create({
     color: '#1e73f6',
     fontWeight: '800',
     fontSize: 14,
+  },
+  flexibleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 6,
+    marginTop: 6,
+  },
+  checkboxBase: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#1e73f6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+  },
+  checkboxChecked: {
+    backgroundColor: '#1e73f6',
+  },
+  flexibleLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0c2047',
   },
   searchButton: {
     marginTop: 4,
