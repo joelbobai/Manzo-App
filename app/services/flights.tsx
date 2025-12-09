@@ -50,6 +50,21 @@ type LocationFieldProps = {
 };
 
 const airportsData = IATAAirports as Airport[];
+const cabinClassOptions = ['Economy', 'Premium Economy', 'Business Class', 'First Class'];
+
+type FlightLeg = {
+  id: string;
+  fromAirport: Airport | null;
+  toAirport: Airport | null;
+  date: string;
+  cabinClass: string;
+};
+
+type PassengerCounts = {
+  adults: number;
+  children: number;
+  infants: number;
+};
 
 function LocationField({ label, airport, onPress }: LocationFieldProps) {
   const { city, country } = getCityAndCountry(airport);
@@ -92,11 +107,14 @@ type DetailFieldProps = {
   value: string;
   icon: React.ComponentProps<typeof Ionicons>['name'];
   muted?: boolean;
+  onPress?: () => void;
 };
 
-function DetailField({ label, value, icon, muted }: DetailFieldProps) {
+function DetailField({ label, value, icon, muted, onPress }: DetailFieldProps) {
+  const Wrapper = onPress ? Pressable : View;
+
   return (
-    <View style={styles.detailField}>
+    <Wrapper style={styles.detailField} onPress={onPress}>
       <View style={styles.detailIcon}>
         <Ionicons name={icon} size={18} color="#1e73f6" />
       </View>
@@ -104,7 +122,7 @@ function DetailField({ label, value, icon, muted }: DetailFieldProps) {
         <Text style={styles.fieldLabel}>{label}</Text>
         <Text style={[styles.detailValue, muted && styles.mutedText]}>{value}</Text>
       </View>
-    </View>
+    </Wrapper>
   );
 }
 
@@ -185,6 +203,148 @@ function SearchModal({
   );
 }
 
+function PassengerModal({
+  visible,
+  onClose,
+  counts,
+  onChange,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  counts: PassengerCounts;
+  onChange: (counts: PassengerCounts) => void;
+}) {
+  const adjustCount = (key: keyof PassengerCounts, delta: number) => {
+    const next = Math.max(0, counts[key] + delta);
+    const updated = { ...counts, [key]: key === 'adults' ? Math.max(1, next) : next };
+    onChange(updated);
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent>
+      <View style={styles.modalOverlay}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <View style={styles.modalCard}>
+          <Text style={styles.modalTitle}>Passengers</Text>
+          <View style={styles.passengerRow}>
+            <View style={styles.passengerInfo}>
+              <Text style={styles.passengerTitle}>Adults</Text>
+              <Text style={styles.passengerSubtitle}>12+ years</Text>
+            </View>
+            <View style={styles.counterWrapper}>
+              <Pressable
+                style={({ pressed }) => [styles.counterButton, pressed && styles.buttonPressed]}
+                onPress={() => adjustCount('adults', -1)}
+              >
+                <Text style={styles.counterLabel}>-</Text>
+              </Pressable>
+              <Text style={styles.counterValue}>{counts.adults}</Text>
+              <Pressable
+                style={({ pressed }) => [styles.counterButton, pressed && styles.buttonPressed]}
+                onPress={() => adjustCount('adults', 1)}
+              >
+                <Text style={styles.counterLabel}>+</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          <View style={styles.passengerRow}>
+            <View style={styles.passengerInfo}>
+              <Text style={styles.passengerTitle}>Child</Text>
+              <Text style={styles.passengerSubtitle}>2-11 years</Text>
+            </View>
+            <View style={styles.counterWrapper}>
+              <Pressable
+                style={({ pressed }) => [styles.counterButton, pressed && styles.buttonPressed]}
+                onPress={() => adjustCount('children', -1)}
+              >
+                <Text style={styles.counterLabel}>-</Text>
+              </Pressable>
+              <Text style={styles.counterValue}>{counts.children}</Text>
+              <Pressable
+                style={({ pressed }) => [styles.counterButton, pressed && styles.buttonPressed]}
+                onPress={() => adjustCount('children', 1)}
+              >
+                <Text style={styles.counterLabel}>+</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          <View style={styles.passengerRow}>
+            <View style={styles.passengerInfo}>
+              <Text style={styles.passengerTitle}>Infant</Text>
+              <Text style={styles.passengerSubtitle}>Under 2 years</Text>
+            </View>
+            <View style={styles.counterWrapper}>
+              <Pressable
+                style={({ pressed }) => [styles.counterButton, pressed && styles.buttonPressed]}
+                onPress={() => adjustCount('infants', -1)}
+              >
+                <Text style={styles.counterLabel}>-</Text>
+              </Pressable>
+              <Text style={styles.counterValue}>{counts.infants}</Text>
+              <Pressable
+                style={({ pressed }) => [styles.counterButton, pressed && styles.buttonPressed]}
+                onPress={() => adjustCount('infants', 1)}
+              >
+                <Text style={styles.counterLabel}>+</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          <Pressable
+            style={({ pressed }) => [styles.searchButton, pressed && styles.buttonPressed]}
+            onPress={onClose}
+          >
+            <Text style={styles.searchButtonText}>Confirm</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function CabinClassModal({
+  visible,
+  onClose,
+  onSelect,
+  selected,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onSelect: (value: string) => void;
+  selected: string;
+}) {
+  return (
+    <Modal visible={visible} animationType="slide" transparent>
+      <View style={styles.modalOverlay}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <View style={styles.modalCard}>
+          <Text style={styles.modalTitle}>Cabin Class</Text>
+          {cabinClassOptions.map((option) => (
+            <Pressable
+              key={option}
+              style={({ pressed }) => [styles.listItem, pressed && styles.buttonPressed]}
+              onPress={() => {
+                onSelect(option);
+                onClose();
+              }}
+            >
+              <View style={styles.cabinIcon}>
+                <Ionicons name="briefcase-outline" size={18} color="#1e73f6" />
+              </View>
+              <View style={styles.listTextContainer}>
+                <Text style={styles.listPrimary}>{option}</Text>
+                {selected === option && <Text style={styles.selectedTag}>Selected</Text>}
+              </View>
+            </Pressable>
+          ))}
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function FlightsScreen() {
   const [fromAirport, setFromAirport] = useState<Airport | null>(
     airportsData.find((airport) => airport.IATA === 'LHE') ?? null,
@@ -193,8 +353,42 @@ export default function FlightsScreen() {
     airportsData.find((airport) => airport.IATA === 'KHI') ?? null,
   );
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [activeField, setActiveField] = useState<'from' | 'to'>('from');
-  const [tripType, setTripType] = useState<'oneWay' | 'roundTrip' | 'multiCity'>('oneWay');
+  const [tripType, setTripType] = useState<'oneWay' | 'roundTrip' | 'multiCity'>('roundTrip');
+  const [departureDate] = useState('15/07/2022');
+  const [returnDate] = useState('+ Add Return Date');
+  const [passengerCounts, setPassengerCounts] = useState<PassengerCounts>({
+    adults: 1,
+    children: 0,
+    infants: 0,
+  });
+  const [cabinClass, setCabinClass] = useState('Economy');
+  const [passengerModalVisible, setPassengerModalVisible] = useState(false);
+  const [cabinModalVisible, setCabinModalVisible] = useState(false);
+  const [activeCabinLeg, setActiveCabinLeg] = useState<string | null>(null);
+  const [locationContext, setLocationContext] = useState<{
+    mode: 'single' | 'multi';
+    field: 'from' | 'to';
+    legId?: string;
+  }>({
+    mode: 'single',
+    field: 'from',
+  });
+  const [legs, setLegs] = useState<FlightLeg[]>([
+    {
+      id: 'leg-1',
+      fromAirport: airportsData.find((airport) => airport.IATA === 'LHE') ?? null,
+      toAirport: airportsData.find((airport) => airport.IATA === 'KHI') ?? null,
+      date: '15/07/2022',
+      cabinClass: 'Economy',
+    },
+    {
+      id: 'leg-2',
+      fromAirport: null,
+      toAirport: null,
+      date: '17/07/2022',
+      cabinClass: 'Economy',
+    },
+  ]);
 
   const tripOptions: { key: typeof tripType; label: string }[] = [
     { key: 'oneWay', label: 'One way' },
@@ -203,10 +397,23 @@ export default function FlightsScreen() {
   ];
 
   const handleSelectAirport = (airport: Airport) => {
-    if (activeField === 'from') {
-      setFromAirport(airport);
+    if (locationContext.mode === 'single') {
+      if (locationContext.field === 'from') {
+        setFromAirport(airport);
+      } else {
+        setToAirport(airport);
+      }
     } else {
-      setToAirport(airport);
+      setLegs((prev) =>
+        prev.map((leg) =>
+          leg.id === locationContext.legId
+            ? {
+                ...leg,
+                [locationContext.field === 'from' ? 'fromAirport' : 'toAirport']: airport,
+              }
+            : leg,
+        ),
+      );
     }
     setIsModalVisible(false);
   };
@@ -215,6 +422,52 @@ export default function FlightsScreen() {
     setFromAirport(toAirport);
     setToAirport(fromAirport);
   };
+
+  const handleSwapLeg = (legId: string) => {
+    setLegs((prev) =>
+      prev.map((leg) =>
+        leg.id === legId
+          ? { ...leg, fromAirport: leg.toAirport, toAirport: leg.fromAirport }
+          : leg,
+      ),
+    );
+  };
+
+  const passengerSummary = `${passengerCounts.adults} Adult${
+    passengerCounts.adults > 1 ? 's' : ''
+  }, ${passengerCounts.children} Child, ${passengerCounts.infants} Infant`;
+
+  const addLeg = () => {
+    setLegs((prev) => [
+      ...prev,
+      {
+        id: `leg-${prev.length + 1}`,
+        fromAirport: null,
+        toAirport: null,
+        date: 'Select Date',
+        cabinClass: cabinClassOptions[0],
+      },
+    ]);
+  };
+
+  const removeLeg = (legId: string) => {
+    setLegs((prev) => prev.filter((leg) => leg.id !== legId));
+  };
+
+  const handleSelectCabin = (value: string) => {
+    if (tripType === 'multiCity' && activeCabinLeg) {
+      setLegs((prev) =>
+        prev.map((leg) => (leg.id === activeCabinLeg ? { ...leg, cabinClass: value } : leg)),
+      );
+    } else {
+      setCabinClass(value);
+    }
+  };
+
+  const selectedCabinClass =
+    tripType === 'multiCity' && activeCabinLeg
+      ? legs.find((leg) => leg.id === activeCabinLeg)?.cabinClass ?? cabinClass
+      : cabinClass;
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -249,45 +502,151 @@ export default function FlightsScreen() {
           ))}
         </View>
 
-        <View style={styles.locationRow}>
-          <LocationField
-            label="From"
-            airport={fromAirport}
-            onPress={() => {
-              setActiveField('from');
-              setIsModalVisible(true);
-            }}
-          />
+        {tripType !== 'multiCity' ? (
+          <>
+            <View style={styles.locationRow}>
+              <LocationField
+                label="From"
+                airport={fromAirport}
+                onPress={() => {
+                  setLocationContext({ mode: 'single', field: 'from' });
+                  setIsModalVisible(true);
+                }}
+              />
 
-          <View style={styles.swapWrapper}>
+              <View style={styles.swapWrapper}>
+                <Pressable
+                  style={styles.swapButton}
+                  onPress={handleSwap}
+                  accessibilityLabel="Swap locations"
+                >
+                  <Ionicons name="swap-vertical" size={18} color="#6a6a6a" />
+                </Pressable>
+              </View>
+
+              <LocationField
+                label="To"
+                airport={toAirport}
+                onPress={() => {
+                  setLocationContext({ mode: 'single', field: 'to' });
+                  setIsModalVisible(true);
+                }}
+              />
+            </View>
+
+            <View style={styles.detailRow}>
+              <DetailField label="Departure" value={departureDate} icon="calendar-outline" />
+              {tripType === 'roundTrip' && (
+                <DetailField label="Return" value={returnDate} icon="return-up-forward" muted />
+              )}
+            </View>
+
+            <View style={styles.detailRow}>
+              <DetailField
+                label="Traveller"
+                value={passengerSummary}
+                icon="person-outline"
+                onPress={() => setPassengerModalVisible(true)}
+              />
+              <DetailField
+                label="Class"
+                value={cabinClass}
+                icon="briefcase-outline"
+                onPress={() => {
+                  setActiveCabinLeg(null);
+                  setCabinModalVisible(true);
+                }}
+              />
+            </View>
+          </>
+        ) : (
+          <>
+            {legs.map((leg, index) => (
+              <View key={leg.id} style={styles.legCard}>
+                <View style={styles.legHeader}>
+                  <Text style={styles.legTitle}>Leg {index + 1}</Text>
+                  <View style={styles.legActions}>
+                    <Pressable
+                      style={({ pressed }) => [styles.legActionButton, pressed && styles.buttonPressed]}
+                      onPress={() => handleSwapLeg(leg.id)}
+                      accessibilityLabel={`Swap locations for leg ${index + 1}`}
+                    >
+                      <Ionicons name="swap-vertical" size={18} color="#1e73f6" />
+                    </Pressable>
+                    {legs.length > 1 && (
+                      <Pressable
+                        style={({ pressed }) => [styles.legActionButton, pressed && styles.buttonPressed]}
+                        onPress={() => removeLeg(leg.id)}
+                        accessibilityLabel={`Remove leg ${index + 1}`}
+                      >
+                        <Ionicons name="trash-outline" size={18} color="#d97757" />
+                      </Pressable>
+                    )}
+                  </View>
+                </View>
+
+                <View style={styles.locationRow}>
+                  <LocationField
+                    label="From"
+                    airport={leg.fromAirport}
+                    onPress={() => {
+                      setLocationContext({ mode: 'multi', field: 'from', legId: leg.id });
+                      setIsModalVisible(true);
+                    }}
+                  />
+
+                  <View style={styles.swapWrapper}>
+                    <Pressable
+                      style={styles.swapButton}
+                      onPress={() => handleSwapLeg(leg.id)}
+                      accessibilityLabel={`Swap locations for leg ${index + 1}`}
+                    >
+                      <Ionicons name="swap-vertical" size={18} color="#6a6a6a" />
+                    </Pressable>
+                  </View>
+
+                  <LocationField
+                    label="To"
+                    airport={leg.toAirport}
+                    onPress={() => {
+                      setLocationContext({ mode: 'multi', field: 'to', legId: leg.id });
+                      setIsModalVisible(true);
+                    }}
+                  />
+                </View>
+
+                <View style={styles.detailRow}>
+                  <DetailField label="Departure" value={leg.date} icon="calendar-outline" />
+                  <DetailField
+                    label="Cabin"
+                    value={leg.cabinClass}
+                    icon="briefcase-outline"
+                    onPress={() => {
+                      setActiveCabinLeg(leg.id);
+                      setCabinModalVisible(true);
+                    }}
+                  />
+                </View>
+              </View>
+            ))}
+
             <Pressable
-              style={styles.swapButton}
-              onPress={handleSwap}
-              accessibilityLabel="Swap locations"
+              style={({ pressed }) => [styles.addLegButton, pressed && styles.buttonPressed]}
+              onPress={addLeg}
             >
-              <Ionicons name="swap-vertical" size={18} color="#6a6a6a" />
+              <Text style={styles.addLegText}>Add another leg</Text>
             </Pressable>
-          </View>
 
-          <LocationField
-            label="To"
-            airport={toAirport}
-            onPress={() => {
-              setActiveField('to');
-              setIsModalVisible(true);
-            }}
-          />
-        </View>
-
-        <View style={styles.detailRow}>
-          <DetailField label="Departure" value="15/07/2022" icon="calendar-outline" />
-          <DetailField label="Return" value="+ Add Return Date" icon="return-up-forward" muted />
-        </View>
-
-        <View style={styles.detailRow}>
-          <DetailField label="Traveller" value="1 Adult" icon="person-outline" />
-          <DetailField label="Class" value="Economy" icon="briefcase-outline" />
-        </View>
+            <View style={styles.detailRow}>
+              <DetailField
+                label="Passengers"
+                value={passengerSummary}
+                icon="person-outline"
+                onPress={() => setPassengerModalVisible(true)}
+              />
+            </View>
+          </>
+        )}
 
         <Pressable style={({ pressed }) => [styles.searchButton, pressed && styles.buttonPressed]}>
           <Text style={styles.searchButtonText}>Search</Text>
@@ -298,7 +657,28 @@ export default function FlightsScreen() {
         visible={isModalVisible}
         onClose={() => setIsModalVisible(false)}
         onSelect={handleSelectAirport}
-        title={activeField === 'from' ? 'Select departure airport' : 'Select destination airport'}
+        title={
+          locationContext.field === 'from'
+            ? 'Select departure airport'
+            : 'Select destination airport'
+        }
+      />
+
+      <PassengerModal
+        visible={passengerModalVisible}
+        onClose={() => setPassengerModalVisible(false)}
+        counts={passengerCounts}
+        onChange={setPassengerCounts}
+      />
+
+      <CabinClassModal
+        visible={cabinModalVisible}
+        onClose={() => {
+          setCabinModalVisible(false);
+          setActiveCabinLeg(null);
+        }}
+        selected={selectedCabinClass}
+        onSelect={handleSelectCabin}
       />
     </ScrollView>
   );
@@ -389,13 +769,13 @@ const styles = StyleSheet.create({
   },
   locationRow: {
     gap: 14,
-     width: '100%',
+    width: '100%',
     position: 'relative',
   },
   locationField: {
     gap: 8,
     borderRadius: 14,
-      width: '100%',
+    width: '100%',
   },
   locationLabel: {
     color: '#7d7d7d',
@@ -452,10 +832,10 @@ const styles = StyleSheet.create({
   },
   swapWrapper: {
     position: 'absolute',
-   right: 25,
+    right: 25,
     top: '50%',
     transform: [{ translateY: -24 }],
-        zIndex: 2,
+    zIndex: 2,
   },
   swapButton: {
     width: 45,
@@ -508,6 +888,53 @@ const styles = StyleSheet.create({
   mutedText: {
     color: '#7a8aa7',
   },
+  legCard: {
+    borderWidth: 1,
+    borderColor: '#dce6f3',
+    borderRadius: 16,
+    padding: 12,
+    backgroundColor: '#f9fbff',
+    marginTop: 10,
+    gap: 12,
+  },
+  legHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  legTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0c2047',
+  },
+  legActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  legActionButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#dce6f3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+  },
+  addLegButton: {
+    marginTop: 10,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#1e73f6',
+    alignItems: 'center',
+    backgroundColor: '#e8f1ff',
+  },
+  addLegText: {
+    color: '#1e73f6',
+    fontWeight: '800',
+    fontSize: 14,
+  },
   searchButton: {
     marginTop: 4,
     backgroundColor: '#1e73f6',
@@ -542,7 +969,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '70%',
-    height:"70%",
+    height: '70%',
     gap: 12,
   },
   modalTitle: {
@@ -596,5 +1023,62 @@ const styles = StyleSheet.create({
   listDivider: {
     height: 1,
     backgroundColor: '#ecf1f8',
+  },
+  passengerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  passengerInfo: {
+    gap: 2,
+  },
+  passengerTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0c2047',
+  },
+  passengerSubtitle: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  counterWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  counterButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#d5deeb',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f8fbff',
+  },
+  counterLabel: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1e73f6',
+  },
+  counterValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0c2047',
+  },
+  cabinIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#e8f1ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectedTag: {
+    marginTop: 2,
+    fontSize: 12,
+    color: '#1e73f6',
+    fontWeight: '700',
   },
 });
