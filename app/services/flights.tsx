@@ -389,11 +389,13 @@ const styles = StyleSheet.create({
   },
   locationRow: {
     gap: 14,
-    paddingRight: 40,
+     width: '100%',
+    position: 'relative',
   },
   locationField: {
     gap: 8,
     borderRadius: 14,
+      width: '100%',
   },
   locationLabel: {
     color: '#7d7d7d',
@@ -450,13 +452,14 @@ const styles = StyleSheet.create({
   },
   swapWrapper: {
     position: 'absolute',
-    right: 0,
+   right: 25,
     top: '50%',
     transform: [{ translateY: -24 }],
+        zIndex: 2,
   },
   swapButton: {
-    width: 38,
-    height: 38,
+    width: 45,
+    height: 45,
     borderRadius: 12,
     backgroundColor: '#ffffff',
     borderWidth: 1,
