@@ -64,10 +64,12 @@ function LocationField({ label, airport, onPress }: LocationFieldProps) {
 
   return (
     <Pressable style={styles.locationField} onPress={onPress}>
+      <View style={{ position: 'absolute', top: 0,  left: 15, zIndex: 1 , backgroundColor: "#fff",  borderRadius: 8}}>
       <Text style={styles.locationLabel}>{label}</Text>
+      </View>
       <View style={styles.locationInput}>
         <View style={styles.locationIcon}>
-          <Ionicons name="airplane-outline" size={19} color="#666666" />
+          <Ionicons name="airplane-outline" size={19} color="#1e73f6" />
         </View>
         <View style={styles.locationTextContainer}>
           <View style={styles.locationPrimaryRow}>
@@ -370,7 +372,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   tripTypeButtonActive: {
-    backgroundColor: '#f34f2a',
+    backgroundColor: '#ff7b00',
     shadowColor: '#f34f2a',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.2,
@@ -399,6 +401,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     letterSpacing: 0.2,
+    paddingHorizontal: 4,
+   
   },
   locationInput: {
     borderWidth: 1,
@@ -407,6 +411,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fbff',
     paddingVertical: 12,
     paddingHorizontal: 12,
+    marginTop: 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
