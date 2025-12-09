@@ -192,6 +192,13 @@ export default function FlightsScreen() {
   );
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [activeField, setActiveField] = useState<'from' | 'to'>('from');
+  const [tripType, setTripType] = useState<'oneWay' | 'roundTrip' | 'multiCity'>('oneWay');
+
+  const tripOptions: { key: typeof tripType; label: string }[] = [
+    { key: 'oneWay', label: 'One way' },
+    { key: 'roundTrip', label: 'Round' },
+    { key: 'multiCity', label: 'Multicity' },
+  ];
 
   const handleSelectAirport = (airport: Airport) => {
     if (activeField === 'from') {
@@ -223,37 +230,52 @@ export default function FlightsScreen() {
       </View>
 
       <View style={styles.formCard}>
-        <Text style={styles.formTitle}>Search flights</Text>
+        <View style={styles.tripTypeRow}>
+          {tripOptions.map((option) => (
+            <Pressable
+              key={option.key}
+              style={[styles.tripTypeButton, tripType === option.key && styles.tripTypeButtonActive]}
+              onPress={() => setTripType(option.key)}
+            >
+              <Text
+                style={[styles.tripTypeLabel, tripType === option.key && styles.tripTypeLabelActive]}
+                numberOfLines={1}
+              >
+                {option.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
 
-       <View style={styles.locationRow}>
-  <LocationField
-    label="From"
-    airport={fromAirport}
-    onPress={() => {
-      setActiveField('from');
-      setIsModalVisible(true);
-    }}
-  />
+        <View style={styles.locationRow}>
+          <LocationField
+            label="From"
+            airport={fromAirport}
+            onPress={() => {
+              setActiveField('from');
+              setIsModalVisible(true);
+            }}
+          />
 
-  <View style={styles.swapWrapper}>
-    <Pressable
-      style={styles.swapButton}
-      onPress={handleSwap}
-      accessibilityLabel="Swap locations"
-    >
-      <Ionicons name="swap-vertical" size={18} color="#6a6a6a" />
-    </Pressable>
-  </View>
+          <View style={styles.swapWrapper}>
+            <Pressable
+              style={styles.swapButton}
+              onPress={handleSwap}
+              accessibilityLabel="Swap locations"
+            >
+              <Ionicons name="swap-vertical" size={18} color="#6a6a6a" />
+            </Pressable>
+          </View>
 
-  <LocationField
-    label="To"
-    airport={toAirport}
-    onPress={() => {
-      setActiveField('to');
-      setIsModalVisible(true);
-    }}
-  />
-</View>
+          <LocationField
+            label="To"
+            airport={toAirport}
+            onPress={() => {
+              setActiveField('to');
+              setIsModalVisible(true);
+            }}
+          />
+        </View>
 
         <View style={styles.detailRow}>
           <DetailField label="Departure" value="15/07/2022" icon="calendar-outline" />
@@ -330,11 +352,38 @@ const styles = StyleSheet.create({
     marginTop: -60,
     marginHorizontal: 16,
   },
-  formTitle: {
-    fontSize: 18,
+  tripTypeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#f8fbff',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#d5deeb',
+  },
+  tripTypeButton: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  tripTypeButtonActive: {
+    backgroundColor: '#f34f2a',
+    shadowColor: '#f34f2a',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  tripTypeLabel: {
+    color: '#7a8aa7',
     fontWeight: '700',
-    color: '#0c2047',
-    marginBottom: 10,
+    fontSize: 14,
+  },
+  tripTypeLabelActive: {
+    color: '#ffffff',
   },
   locationRow: {
     gap: 14,
