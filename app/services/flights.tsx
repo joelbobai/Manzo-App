@@ -479,7 +479,7 @@ export default function FlightsScreen() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [tripType, setTripType] = useState<'oneWay' | 'roundTrip' | 'multiCity'>('roundTrip');
   const [departureDate, setDepartureDate] = useState<Date>(new Date('2022-07-15'));
-  const [returnDate, setReturnDate] = useState<Date | null>(null);
+  const [returnDate, setReturnDate] = useState<Date | null>(new Date('2022-07-17'));
   const [passengerCounts, setPassengerCounts] = useState<PassengerCounts>({
     adults: 1,
     children: 0,
@@ -519,12 +519,34 @@ export default function FlightsScreen() {
     date: Date;
   } | null>(null);
 
+  useEffect(() => {
+    if (tripType === 'oneWay') {
+      setReturnDate(null);
+      return;
+    }
+
+    setReturnDate((prev) => {
+      if (prev && prev > departureDate) return prev;
+
+      const adjusted = new Date(departureDate);
+      adjusted.setDate(departureDate.getDate() + 2);
+      return adjusted;
+    });
+  }, [tripType, departureDate]);
+
   const formatDateLabel = (date: Date | null, emptyLabel = 'Select Date') =>
     date ? date.toLocaleDateString('en-GB') : emptyLabel;
 
   const getInitialDateForPicker = (target: DatePickerTarget) => {
     if (target.type === 'departure') return departureDate;
-    if (target.type === 'return') return returnDate ?? departureDate;
+
+    if (target.type === 'return') {
+      if (returnDate) return returnDate;
+
+      const fallback = new Date(departureDate);
+      fallback.setDate(departureDate.getDate() + 2);
+      return fallback;
+    }
 
     const legDate = legs.find((leg) => leg.id === target.legId)?.date;
     return legDate ?? departureDate;
