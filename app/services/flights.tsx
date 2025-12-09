@@ -478,8 +478,8 @@ export default function FlightsScreen() {
   );
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [tripType, setTripType] = useState<'oneWay' | 'roundTrip' | 'multiCity'>('roundTrip');
-  const [departureDate, setDepartureDate] = useState<Date>(new Date('2022-07-15'));
-  const [returnDate, setReturnDate] = useState<Date | null>(new Date('2022-07-17'));
+  const [departureDate, setDepartureDate] = useState<Date>(new Date());
+  const [returnDate, setReturnDate] = useState<Date | null>(new Date());
   const [passengerCounts, setPassengerCounts] = useState<PassengerCounts>({
     adults: 1,
     children: 0,
@@ -502,14 +502,14 @@ export default function FlightsScreen() {
       id: 'leg-1',
       fromAirport: airportsData.find((airport) => airport.IATA === 'LHE') ?? null,
       toAirport: airportsData.find((airport) => airport.IATA === 'KHI') ?? null,
-      date: new Date('2022-07-15'),
+      date: new Date(),
       cabinClass: 'Economy',
     },
     {
       id: 'leg-2',
       fromAirport: null,
       toAirport: null,
-      date: new Date('2022-07-17'),
+      date: new Date(),
       cabinClass: 'Economy',
     },
   ]);
@@ -1088,7 +1088,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   detailValue: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '800',
     color: '#0c2047',
   },
