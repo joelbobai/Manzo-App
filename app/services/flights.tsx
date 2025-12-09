@@ -353,9 +353,9 @@ const styles = StyleSheet.create({
   },
   locationInput: {
     borderWidth: 1,
-    borderColor: '#d7d7d7',
+    borderColor: '#d5deeb',
     borderRadius: 14,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f8fbff',
     paddingVertical: 12,
     paddingHorizontal: 12,
     flexDirection: 'row',
@@ -367,6 +367,8 @@ const styles = StyleSheet.create({
     height: 30,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#e8f1ff',
+    borderRadius: 10,
   },
   locationTextContainer: {
     flex: 1,
