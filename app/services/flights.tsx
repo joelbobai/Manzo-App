@@ -389,7 +389,6 @@ const styles = StyleSheet.create({
   },
   locationRow: {
     gap: 14,
-    position: 'relative',
     paddingRight: 40,
   },
   locationField: {
