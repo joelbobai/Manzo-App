@@ -41,6 +41,8 @@ const getCityAndCountry = (airport: Airport | null | undefined) => {
 const getAirportName = (airport: Airport | null | undefined) =>
   (airport?.Airport_name ?? '').replace(/\u00a0/g, ' ');
 
+const toLowerSafe = (value?: string | null) => (value ?? '').toLowerCase();
+
 type LocationFieldProps = {
   label: string;
   airport?: Airport | null;
@@ -120,18 +122,18 @@ function SearchModal({
   const filteredAirports = useMemo(() => {
     if (!query) return airportsData.slice(0, 50);
 
-    const lower = query.toLowerCase();
+    const lower = toLowerSafe(query);
     return airportsData
       .filter((airport) => {
         const { city, country } = getCityAndCountry(airport);
-        const airportName = getAirportName(airport).toLowerCase();
-        const served = (airport.Location_served ?? '').replace(/\u00a0/g, ' ').toLowerCase();
+        const airportName = toLowerSafe(getAirportName(airport));
+        const served = toLowerSafe((airport.Location_served ?? '').replace(/\u00a0/g, ' '));
 
         return (
-          city.toLowerCase().includes(lower) ||
-          airport.IATA.toLowerCase().includes(lower) ||
+          toLowerSafe(city).includes(lower) ||
+          toLowerSafe(airport.IATA).includes(lower) ||
           airportName.includes(lower) ||
-          country.toLowerCase().includes(lower) ||
+          toLowerSafe(country).includes(lower) ||
           served.includes(lower)
         );
       })
