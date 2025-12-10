@@ -719,6 +719,8 @@ export default function FlightsScreen() {
         id: 1,
         originLocationCode: fromAirport.IATA,
         destinationLocationCode: toAirport.IATA,
+        from: getAirportLabel(fromAirport),
+        to: getAirportLabel(toAirport),
         departureDateTimeRange: formatDateForApi(departureDate),
       },
     ];
@@ -733,6 +735,8 @@ export default function FlightsScreen() {
         id: 2,
         originLocationCode: toAirport.IATA,
         destinationLocationCode: fromAirport.IATA,
+        from: getAirportLabel(toAirport),
+        to: getAirportLabel(fromAirport),
         departureDateTimeRange: formatDateForApi(returnDate),
       });
     }
@@ -814,7 +818,7 @@ export default function FlightsScreen() {
 
       router.push({
         pathname: '/services/flight-results',
-        params: { data: JSON.stringify(result), source: 'live' },
+        params: { data: JSON.stringify(result), payload: JSON.stringify(payload), source: 'live' },
       });
     } catch (error) {
       console.error('Flight search error', error);
