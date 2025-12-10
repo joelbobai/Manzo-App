@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 type FlightCard = {
   id: string;
@@ -139,6 +139,17 @@ export default function FlightResultsScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.topBar}>
+        <View style={{
+          width: "100%",
+          flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#0c2047',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    borderRadius: 14,
+    marginBottom: 6,
+        }}>
         <Pressable style={styles.topIcon} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={22} color="#ffffff" />
         </Pressable>
@@ -146,26 +157,29 @@ export default function FlightResultsScreen() {
         <View style={styles.topIcon}>
           <Ionicons name="options" size={20} color="#ffffff" />
         </View>
-      </View>
+        </View>
 
-      <View style={styles.summaryCard}>
+            <View style={styles.summaryCard}>
         <View style={styles.routeRow}>
           <View style={styles.locationBlock}>
             <Text style={styles.airportCode}>{summary.fromCode}</Text>
             <Text style={styles.airportCity}>{summary.fromCity}</Text>
           </View>
 
-          <View style={styles.routeConnector}>
-            <Ionicons name="airplane" size={18} color="#1e73f6" />
-            <View style={styles.routeLine} />
-          </View>
+         <View style={styles.connector}>
+              <View style={styles.dash} />
+              <View style={styles.planeIconWrapper}>
+                <Ionicons name="airplane" size={16} color="#0c2047" />
+              </View>
+              <View style={styles.dash} />
+            </View>
 
           <View style={styles.locationBlock}>
             <Text style={styles.airportCode}>{summary.toCode}</Text>
             <Text style={styles.airportCity}>{summary.toCity}</Text>
           </View>
         </View>
-
+{/* 
         <View style={styles.metaRow}>
           <View style={styles.metaItem}>
             <Ionicons name="calendar" size={16} color="#1e73f6" />
@@ -175,8 +189,11 @@ export default function FlightResultsScreen() {
             <Ionicons name="time" size={16} color="#1e73f6" />
             <Text style={styles.metaText}>{summary.timeLabel}</Text>
           </View>
-        </View>
+        </View> */}
       </View>
+      </View>
+
+  
 
       <Text style={styles.sectionLabel}>Result</Text>
 
@@ -237,18 +254,19 @@ export default function FlightResultsScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
     gap: 14,
     backgroundColor: '#f5f7fb',
     flexGrow: 1,
   },
   topBar: {
-    flexDirection: 'row',
+    paddingTop: 48,
+    flexDirection: "column",
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#0c2047',
     paddingHorizontal: 14,
     paddingVertical: 14,
+    
     borderRadius: 14,
     marginBottom: 6,
   },
@@ -266,14 +284,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   summaryCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
+     width: "100%",
+    // backgroundColor: '#ffffff',
+    // borderRadius: 16,
     padding: 16,
     gap: 12,
-    borderWidth: 1,
-    borderColor: '#e4eaf5',
+    // borderWidth: 1,
+    // borderColor: '#e4eaf5',
   },
   routeRow: {
+    width: "100%",
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -285,11 +305,11 @@ const styles = StyleSheet.create({
   airportCode: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#0c2047',
+    color: '#fff',
   },
   airportCity: {
     fontSize: 12,
-    color: '#4c4c4c',
+    color: '#fff',
   },
   routeConnector: {
     alignItems: 'center',

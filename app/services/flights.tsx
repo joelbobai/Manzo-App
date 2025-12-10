@@ -1,11 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
-import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   ActivityIndicator,
+  Alert,
   FlatList,
   Modal,
   Pressable,
@@ -20,7 +20,7 @@ type DatePickerTarget = { type: 'departure' | 'return' | 'leg'; legId?: string }
 
 const flightHeroImage =
   'https://images.unsplash.com/photo-1670699054598-776d35923e75?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
-const SEARCH_API_URL = process.env.EXPO_PUBLIC_FLIGHT_SEARCH_URL ?? 'http://192.168.0.135:3800/api/v1/flights/flightOffersSearch';
+const SEARCH_API_URL = process.env.EXPO_PUBLIC_FLIGHT_SEARCH_URL ?? 'http://192.168.0.136:3800/api/v1/flights/flightOffersSearch';
 
 type Airport = {
   IATA: string;
