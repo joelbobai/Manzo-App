@@ -283,7 +283,7 @@ export default function FlightResultsScreen() {
                 </Text>
               </View>
             </View>
-          </View>
+          
 
             <View style={styles.priceBlock}>
               <Text style={styles.price}>{flight.price}</Text>
