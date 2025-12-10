@@ -139,17 +139,7 @@ export default function FlightResultsScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.topBar}>
-        <View style={{
-          width: "100%",
-          flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#0c2047',
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    borderRadius: 14,
-    marginBottom: 6,
-        }}>
+      <View style={styles.topActions}>
         <Pressable style={styles.topIcon} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={22} color="#ffffff" />
         </Pressable>
@@ -166,30 +156,23 @@ export default function FlightResultsScreen() {
             <Text style={styles.airportCity}>{summary.fromCity}</Text>
           </View>
 
-         <View style={styles.connector}>
-              <View style={styles.dash} />
-              <View style={styles.planeIconWrapper}>
+         <View style={styles.summaryConnector}>
+              <View style={[styles.dash, styles.summaryDash]} />
+              <View style={[styles.planeIconWrapper, styles.summaryPlaneIcon]}>
                 <Ionicons name="airplane" size={16} color="#0c2047" />
               </View>
-              <View style={styles.dash} />
+              <View style={[styles.dash, styles.summaryDash]} />
             </View>
 
-          <View style={styles.locationBlock}>
+          <View style={[styles.locationBlock, styles.alignEnd]}>
             <Text style={styles.airportCode}>{summary.toCode}</Text>
             <Text style={styles.airportCity}>{summary.toCity}</Text>
           </View>
         </View>
-{/* 
-        <View style={styles.metaRow}>
-          <View style={styles.metaItem}>
-            <Ionicons name="calendar" size={16} color="#1e73f6" />
-            <Text style={styles.metaText}>{summary.dateLabel}</Text>
-          </View>
-          <View style={styles.metaItem}>
-            <Ionicons name="time" size={16} color="#1e73f6" />
-            <Text style={styles.metaText}>{summary.timeLabel}</Text>
-          </View>
-        </View> */}
+        <View style={styles.summaryMetaRow}>
+          <Ionicons name="calendar" size={14} color="#ffffff" />
+          <Text style={styles.summaryMetaText}>{summary.dateLabel}</Text>
+        </View>
       </View>
       </View>
 
@@ -266,7 +249,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#0c2047',
     paddingHorizontal: 14,
     paddingVertical: 14,
-    
+
+    borderRadius: 14,
+    marginBottom: 6,
+  },
+  topActions: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#0c2047',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
     borderRadius: 14,
     marginBottom: 6,
   },
@@ -311,29 +305,35 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#fff',
   },
+  summaryConnector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  summaryDash: {
+    borderColor: '#ffffffb3',
+  },
+  summaryPlaneIcon: {
+    backgroundColor: '#ffffff',
+    borderColor: '#ffffffb3',
+  },
   routeConnector: {
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     paddingHorizontal: 12,
   },
-  metaRow: {
+  summaryMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'center',
+    gap: 8,
   },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#f0f4fb',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 10,
-  },
-  metaText: {
-    color: '#0c2047',
+  summaryMetaText: {
+    color: '#ffffff',
     fontSize: 13,
+    fontWeight: '700',
   },
   sectionLabel: {
     fontSize: 15,
