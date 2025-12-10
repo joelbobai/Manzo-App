@@ -1,9 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
+import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  ActivityIndicator,
   FlatList,
   Modal,
   Pressable,
@@ -525,6 +527,7 @@ function DatePickerModal({
 }
 
 export default function FlightsScreen() {
+  const router = useRouter();
   const [fromAirport, setFromAirport] = useState<Airport | null>(
     airportsData.find((airport) => airport.IATA === 'LHE') ?? null,
   );
@@ -574,6 +577,7 @@ export default function FlightsScreen() {
     target: DatePickerTarget;
     date: Date;
   } | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     if (tripType === 'oneWay') {
@@ -778,33 +782,45 @@ export default function FlightsScreen() {
 
     if (!payload) return;
 
+    setIsSearching(true);
+
     console.log('Flight search payload', payload);
 
     if (!SEARCH_API_URL) {
-      Alert.alert('Payload ready', JSON.stringify(payload, null, 2));
+      setTimeout(() => {
+        router.push({
+          pathname: '/services/flight-results',
+          params: { payload: JSON.stringify(payload), source: 'offline' },
+        });
+        setIsSearching(false);
+      }, 600);
       return;
     }
+
     console.log('SEARCH_API_URL', SEARCH_API_URL);
-console.log('Submitting search to API payload:', payload);
+    console.log('Submitting search to API payload:', payload);
     try {
       const response = await fetch(SEARCH_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-console.log('Submitting search to API JSON.stringify(payload)',JSON.stringify(payload));
-const data = await response.json();
-console.log('Response status:', data);
+      console.log('Submitting search to API JSON.stringify(payload)', JSON.stringify(payload));
       const result = await response.json().catch(() => null);
 
       if (!response.ok) {
         throw new Error((result as { message?: string })?.message ?? 'Search request failed');
       }
 
-      Alert.alert('Search submitted', 'Your flight search was sent to the API.', result);
+      router.push({
+        pathname: '/services/flight-results',
+        params: { data: JSON.stringify(result), source: 'live' },
+      });
     } catch (error) {
       console.error('Flight search error', error);
       Alert.alert('Search failed', (error as Error).message);
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -1063,6 +1079,20 @@ console.log('Response status:', data);
         onClose={() => setDatePickerConfig(null)}
         onConfirm={handleConfirmDate}
       />
+
+      {isSearching && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingCard}>
+            <Image
+              source={require('../../assets/images/icon.png')}
+              style={styles.loadingLogo}
+              contentFit="contain"
+            />
+            <ActivityIndicator size="large" color="#1e73f6" />
+            <Text style={styles.loadingText}>Searching for flights...</Text>
+          </View>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -1362,6 +1392,34 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '800',
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(12, 32, 71, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingCard: {
+    backgroundColor: '#ffffff',
+    padding: 24,
+    borderRadius: 20,
+    alignItems: 'center',
+    gap: 14,
+    width: '70%',
+    shadowColor: '#0c2047',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 6,
+  },
+  loadingLogo: {
+    width: 82,
+    height: 82,
+  },
+  loadingText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0c2047',
   },
   flexOne: {
     flex: 1,
