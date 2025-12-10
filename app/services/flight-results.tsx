@@ -283,6 +283,7 @@ export default function FlightResultsScreen() {
                 </Text>
               </View>
             </View>
+          </View>
 
             <View style={styles.priceBlock}>
               <Text style={styles.price}>{flight.price}</Text>
@@ -399,6 +400,51 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     elevation: 2,
   },
+  pillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#f2f5fb',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  pillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0c2047',
+  },
+  tripMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  tripMetaTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  tripMetaText: {
+    color: '#0c2047',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  tripMetaSub: {
+    color: '#5c6270',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  airlineChips: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -419,6 +465,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#d7e1f1',
+  },
+  logoText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0c2047',
+  },
+  airlineCount: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0c2047',
+  },
+  logoCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#eef3fb',
+    borderWidth: 1,
+    borderColor: '#d7e1f1',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   logoText: {
     fontSize: 13,
@@ -521,6 +587,32 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#5c6270',
     fontWeight: '700',
+  },
+  ctaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#e5edff',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  ctaText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0c2047',
+    textTransform: 'capitalize',
+  },
+  stopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 2,
+  },
+  stopText: {
+    color: '#5c6270',
+    fontSize: 12,
+    fontWeight: '600',
   },
   alignEnd: {
     textAlign: 'right',
