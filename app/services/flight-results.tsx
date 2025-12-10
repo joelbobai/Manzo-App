@@ -3,6 +3,17 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import IATAAirports from '../../data/IATA_airports.json';
+
+type Airport = {
+  IATA: string;
+  ICAO: string;
+  Airport_name: string | null;
+  Location_served: string | null;
+  Time: string;
+  DST: string | null;
+};
+
 type FlightCard = {
   id: string;
   airline: string;
@@ -18,6 +29,47 @@ type FlightCard = {
   price: string;
   tagColor: string;
   flightNumber: string;
+};
+
+type SummaryLeg = {
+  id: string;
+  fromCode: string;
+  toCode: string;
+  fromCity: string;
+  toCity: string;
+  dateLabel: string;
+};
+
+const airportsData = IATAAirports as Airport[];
+
+const getCityAndCountry = (airport: Airport | null | undefined) => {
+  if (!airport) return { city: '', country: '' };
+
+  const cleaned = (airport.Location_served ?? '').replace(/\u00a0/g, ' ');
+  const parts = cleaned
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  return {
+    city: parts[0] ?? '',
+    country: parts[parts.length - 1] ?? '',
+  };
+};
+
+const getAirportName = (airport: Airport | null | undefined) =>
+  (airport?.Airport_name ?? '').replace(/\u00a0/g, ' ');
+
+const getCityLabelFromCode = (code?: string | null) => {
+  if (!code) return '';
+
+  const airport = airportsData.find((item) => item.IATA === code);
+  if (!airport) return '';
+
+  const { city, country } = getCityAndCountry(airport);
+  const airportName = getAirportName(airport);
+
+  return city || airportName || country || code;
 };
 
 export default function FlightResultsScreen() {
@@ -60,17 +112,46 @@ export default function FlightResultsScreen() {
     });
   };
 
-  const firstLeg = parsedPayload?.flightSearch?.[0];
-  const lastLeg = parsedPayload?.flightSearch?.[parsedPayload?.flightSearch?.length - 1 ?? 0];
+  const summaryLegs = useMemo<SummaryLeg[]>(() => {
+    const legs = (Array.isArray(parsedPayload?.flightSearch) ? parsedPayload?.flightSearch : [])
+      ?.map((leg, index) => {
+        const originCode = (leg as { originLocationCode?: string }).originLocationCode ?? '';
+        const destinationCode = (leg as { destinationLocationCode?: string }).destinationLocationCode ?? '';
+        const from =
+          (leg as { from?: string }).from || getCityLabelFromCode(originCode) || originCode || 'N/A';
+        const to =
+          (leg as { to?: string }).to || getCityLabelFromCode(destinationCode) || destinationCode || 'N/A';
+        const dateValue =
+          (leg as { departureDate?: string }).departureDate ??
+          (leg as { departureDateTimeRange?: string }).departureDateTimeRange ??
+          '';
 
-  const summary = {
-    fromCode: firstLeg?.originLocationCode || 'SBY',
-    toCode: lastLeg?.destinationLocationCode || 'DPS',
-    fromCity: firstLeg?.from || 'Surabaya, East Java',
-    toCity: lastLeg?.to || 'Denpasar, Bali',
-    dateLabel: formatDate(firstLeg?.departureDate) || 'Dec 21, 2023',
-    timeLabel: '09:00 AM',
-  };
+        return {
+          id: (leg as { id?: string | number }).id?.toString() || `leg-${index + 1}`,
+          fromCode: originCode || '---',
+          toCode: destinationCode || '---',
+          fromCity: from,
+          toCity: to,
+          dateLabel: formatDate(dateValue) || dateValue || 'Date unavailable',
+        };
+      })
+      .filter(Boolean);
+
+    if (legs && legs.length > 0) return legs as SummaryLeg[];
+
+    return [
+      {
+        id: 'leg-1',
+        fromCode: 'SBY',
+        toCode: 'DPS',
+        fromCity: 'Surabaya, East Java',
+        toCity: 'Denpasar, Bali',
+        dateLabel: 'Dec 21, 2023',
+      },
+    ];
+  }, [parsedPayload]);
+
+  const summaryPrimary = summaryLegs[0];
 
   const flights: FlightCard[] = (
     (parsedResult as { flights?: FlightCard[] } | null)?.flights ?? (
@@ -83,17 +164,24 @@ export default function FlightResultsScreen() {
     tagColor: flight.tagColor || '#1e73f6',
   }));
 
+  const defaultFromCode = summaryPrimary?.fromCode ?? 'SBY';
+  const defaultToCode = summaryPrimary?.toCode ?? 'DPS';
+  const defaultFromCity = summaryPrimary?.fromCity ?? 'Surabaya, East Java';
+  const defaultToCity = summaryPrimary?.toCity ?? 'Denpasar, Bali';
+  const defaultDateLabel = summaryPrimary?.dateLabel ?? 'Dec 21, 2023';
+  const defaultTimeLabel = '09:00 AM';
+
   const mockFlights: FlightCard[] = [
     {
       id: '1',
       airline: 'Garuda Indonesia',
       airlineCode: 'GA',
       aircraft: 'A330',
-      fromCode: summary.fromCode,
-      toCode: summary.toCode,
-      fromCity: summary.fromCity,
-      toCity: summary.toCity,
-      departureTime: summary.timeLabel,
+      fromCode: defaultFromCode,
+      toCode: defaultToCode,
+      fromCity: defaultFromCity,
+      toCity: defaultToCity,
+      departureTime: defaultTimeLabel,
       arrivalTime: '01:30 PM',
       duration: '4h30m',
       price: '$320',
@@ -105,10 +193,10 @@ export default function FlightResultsScreen() {
       airline: 'Lion Air',
       airlineCode: 'JT',
       aircraft: 'JT-25',
-      fromCode: summary.fromCode,
-      toCode: summary.toCode,
-      fromCity: summary.fromCity,
-      toCity: summary.toCity,
+      fromCode: defaultFromCode,
+      toCode: defaultToCode,
+      fromCity: defaultFromCity,
+      toCity: defaultToCity,
       departureTime: '12:30 PM',
       arrivalTime: '04:20 PM',
       duration: '3h50m',
@@ -121,10 +209,10 @@ export default function FlightResultsScreen() {
       airline: 'Citilink',
       airlineCode: 'QG',
       aircraft: 'QG-101',
-      fromCode: summary.fromCode,
-      toCode: summary.toCode,
-      fromCity: summary.fromCity,
-      toCity: summary.toCity,
+      fromCode: defaultFromCode,
+      toCode: defaultToCode,
+      fromCity: defaultFromCity,
+      toCity: defaultToCity,
       departureTime: '05:45 PM',
       arrivalTime: '09:55 PM',
       duration: '4h10m',
@@ -150,29 +238,36 @@ export default function FlightResultsScreen() {
         </View>
 
             <View style={styles.summaryCard}>
-        <View style={styles.routeRow}>
-          <View style={styles.locationBlock}>
-            <Text style={styles.airportCode}>{summary.fromCode}</Text>
-            <Text style={styles.airportCity}>{summary.fromCity}</Text>
-          </View>
-
-         <View style={styles.summaryConnector}>
-              <View style={[styles.dash, styles.summaryDash]} />
-              <View style={[styles.planeIconWrapper, styles.summaryPlaneIcon]}>
-                <Ionicons name="airplane" size={16} color="#0c2047" />
+        {summaryLegs.map((leg, index) => (
+          <View
+            key={leg.id}
+            style={[styles.summaryLeg, index > 0 && styles.summaryLegDivider]}
+          >
+            <View style={styles.routeRow}>
+              <View style={styles.locationBlock}>
+                <Text style={styles.airportCode}>{leg.fromCode}</Text>
+                <Text style={styles.airportCity}>{leg.fromCity}</Text>
               </View>
-              <View style={[styles.dash, styles.summaryDash]} />
-            </View>
 
-          <View style={[styles.locationBlock, styles.alignEnd]}>
-            <Text style={styles.airportCode}>{summary.toCode}</Text>
-            <Text style={styles.airportCity}>{summary.toCity}</Text>
+              <View style={styles.summaryConnector}>
+                <View style={[styles.dash, styles.summaryDash]} />
+                <View style={[styles.planeIconWrapper, styles.summaryPlaneIcon]}>
+                  <Ionicons name="airplane" size={16} color="#0c2047" />
+                </View>
+                <View style={[styles.dash, styles.summaryDash]} />
+              </View>
+
+              <View style={[styles.locationBlock, styles.alignEnd]}>
+                <Text style={styles.airportCode}>{leg.toCode}</Text>
+                <Text style={styles.airportCity}>{leg.toCity}</Text>
+              </View>
+            </View>
+            <View style={styles.summaryMetaRow}>
+              <Ionicons name="calendar" size={14} color="#ffffff" />
+              <Text style={styles.summaryMetaText}>{leg.dateLabel}</Text>
+            </View>
           </View>
-        </View>
-        <View style={styles.summaryMetaRow}>
-          <Ionicons name="calendar" size={14} color="#ffffff" />
-          <Text style={styles.summaryMetaText}>{summary.dateLabel}</Text>
-        </View>
+        ))}
       </View>
       </View>
 
@@ -221,7 +316,7 @@ export default function FlightResultsScreen() {
           <View style={styles.detailRow}>
             <View style={styles.metaPill}>
               <Ionicons name="calendar" size={14} color="#0c2047" />
-              <Text style={styles.metaText}>{summary.dateLabel}</Text>
+              <Text style={styles.metaText}>{defaultDateLabel}</Text>
             </View>
             <View style={styles.metaPill}>
               <Ionicons name="time-outline" size={14} color="#0c2047" />
@@ -285,6 +380,16 @@ const styles = StyleSheet.create({
     gap: 12,
     // borderWidth: 1,
     // borderColor: '#e4eaf5',
+  },
+  summaryLeg: {
+    width: '100%',
+    gap: 8,
+  },
+  summaryLegDivider: {
+    paddingTop: 12,
+    marginTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#ffffff33',
   },
   routeRow: {
     width: "100%",
