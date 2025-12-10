@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#0c2047',
-    paddingHorizontal: 14,
+    
     paddingVertical: 14,
 
     borderRadius: 14,
