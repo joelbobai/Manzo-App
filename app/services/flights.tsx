@@ -21,6 +21,9 @@ type DatePickerTarget = { type: 'departure' | 'return' | 'leg'; legId?: string }
 const flightHeroImage =
   'https://images.unsplash.com/photo-1670699054598-776d35923e75?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
 const SEARCH_API_URL = process.env.EXPO_PUBLIC_FLIGHT_SEARCH_URL ?? 'http://192.168.0.136:3800/api/v1/flights/flightOffersSearch';
+const MULTI_CITY_SEARCH_API_URL =
+  process.env.EXPO_PUBLIC_FLIGHT_SEARCH_MULTI_CITY_URL ??
+  'http://192.168.0.136:3800/api/v1/flights/flightOffersSearchMultiCity';
 
 type Airport = {
   IATA: string;
@@ -790,7 +793,9 @@ export default function FlightsScreen() {
 
     console.log('Flight search payload', payload);
 
-    if (!SEARCH_API_URL) {
+    const apiUrl = tripType === 'multiCity' ? MULTI_CITY_SEARCH_API_URL : SEARCH_API_URL;
+
+    if (!apiUrl) {
       setTimeout(() => {
         router.push({
           pathname: '/services/flight-results',
@@ -801,10 +806,10 @@ export default function FlightsScreen() {
       return;
     }
 
-    console.log('SEARCH_API_URL', SEARCH_API_URL);
+    console.log('SEARCH_API_URL', apiUrl);
     console.log('Submitting search to API payload:', payload);
     try {
-      const response = await fetch(SEARCH_API_URL, {
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
