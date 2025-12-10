@@ -19,6 +19,9 @@ type FlightCard = {
   airline: string;
   airlineCode: string;
   aircraft: string;
+  cabinClass?: string;
+  passengersLabel?: string;
+  tripLabel?: string;
   fromCode: string;
   toCode: string;
   fromCity: string;
@@ -26,6 +29,10 @@ type FlightCard = {
   departureTime: string;
   arrivalTime?: string;
   duration: string;
+  stopsLabel?: string;
+  stopCities?: string;
+  fareNote?: string;
+  airlinesCount?: number;
   price: string;
   tagColor: string;
   flightNumber: string;
@@ -177,6 +184,9 @@ export default function FlightResultsScreen() {
       airline: 'Garuda Indonesia',
       airlineCode: 'GA',
       aircraft: 'A330',
+      cabinClass: 'Economy',
+      passengersLabel: '1 Adult',
+      tripLabel: 'Round trip',
       fromCode: defaultFromCode,
       toCode: defaultToCode,
       fromCity: defaultFromCity,
@@ -184,6 +194,10 @@ export default function FlightResultsScreen() {
       departureTime: defaultTimeLabel,
       arrivalTime: '01:30 PM',
       duration: '4h30m',
+      stopsLabel: '2 stop overs',
+      stopCities: 'Addis Ababa, Hessen',
+      fareNote: 'Refundable, Penalty Applies',
+      airlinesCount: 2,
       price: '$320',
       tagColor: '#1e73f6',
       flightNumber: 'GA-01',
@@ -193,6 +207,9 @@ export default function FlightResultsScreen() {
       airline: 'Lion Air',
       airlineCode: 'JT',
       aircraft: 'JT-25',
+      cabinClass: 'Economy',
+      passengersLabel: '1 Adult',
+      tripLabel: 'Round trip',
       fromCode: defaultFromCode,
       toCode: defaultToCode,
       fromCity: defaultFromCity,
@@ -200,6 +217,10 @@ export default function FlightResultsScreen() {
       departureTime: '12:30 PM',
       arrivalTime: '04:20 PM',
       duration: '3h50m',
+      stopsLabel: '1 stop over',
+      stopCities: 'Kuala Lumpur',
+      fareNote: 'Free reschedule within 24h',
+      airlinesCount: 1,
       price: '$479',
       tagColor: '#F89A1C',
       flightNumber: 'JT-25',
@@ -209,6 +230,9 @@ export default function FlightResultsScreen() {
       airline: 'Citilink',
       airlineCode: 'QG',
       aircraft: 'QG-101',
+      cabinClass: 'Economy',
+      passengersLabel: '1 Adult',
+      tripLabel: 'Round trip',
       fromCode: defaultFromCode,
       toCode: defaultToCode,
       fromCity: defaultFromCity,
@@ -216,6 +240,10 @@ export default function FlightResultsScreen() {
       departureTime: '05:45 PM',
       arrivalTime: '09:55 PM',
       duration: '4h10m',
+      stopsLabel: 'Direct flight',
+      stopCities: 'Non-stop service',
+      fareNote: 'Baggage included',
+      airlinesCount: 1,
       price: '$289',
       tagColor: '#3DBE29',
       flightNumber: 'QG-101',
@@ -277,15 +305,54 @@ export default function FlightResultsScreen() {
 
       {cardsToShow.map((flight) => (
         <View key={flight.id} style={styles.flightCard}>
-          <View style={styles.cardHeader}>
-            <View style={styles.badgeRow}>
+          <View style={styles.pillRow}>
+            <View style={styles.pill}>
+              <Ionicons name="flag-outline" size={14} color="#0c2047" />
+              <Text style={styles.pillText}>To {flight.toCity || defaultToCity}</Text>
+            </View>
+            <View style={styles.pill}>
+              <Ionicons name="briefcase-outline" size={14} color="#0c2047" />
+              <Text style={styles.pillText}>{flight.cabinClass || 'Economy'}</Text>
+            </View>
+            <View style={styles.pill}>
+              <Ionicons name="person-outline" size={14} color="#0c2047" />
+              <Text style={styles.pillText}>{flight.passengersLabel || '1 Adult'}</Text>
+            </View>
+          </View>
+
+          <View style={styles.tripMetaRow}>
+            <View style={styles.tripMetaTextWrap}>
+              <Text style={styles.tripMetaText}>
+                {flight.tripLabel || 'Round trip'} • {defaultDateLabel}
+              </Text>
+              <Text style={styles.tripMetaSub}>{flight.fareNote || 'Refundable options available'}</Text>
+            </View>
+            <View style={styles.airlineChips}>
               <View style={[styles.badge, { backgroundColor: `${flight.tagColor}14` }]}>
                 <Text style={[styles.badgeText, { color: flight.tagColor }]}>Airlines</Text>
               </View>
-              <Text style={styles.airlineName}>{flight.airline}</Text>
+              <Text style={styles.airlineCount}>{flight.airlinesCount ?? 1} Airline{(flight.airlinesCount ?? 1) > 1 ? 's' : ''}</Text>
+            </View>
+          </View>
+
+          <View style={styles.cardHeader}>
+            <View style={styles.badgeRow}>
+              <View style={styles.logoCircle}>
+                <Text style={styles.logoText}>{flight.airlineCode}</Text>
+              </View>
+              <View>
+                <Text style={styles.airlineName}>{flight.airline}</Text>
+                <Text style={styles.aircraft}>Flight {flight.flightNumber}</Text>
+              </View>
             </View>
 
-            <Text style={styles.aircraft}>{flight.aircraft}</Text>
+            <View style={styles.priceBlock}>
+              <Text style={styles.price}>{flight.price}</Text>
+              <Pressable style={styles.ctaButton}>
+                <Text style={styles.ctaText}>Book now</Text>
+                <Ionicons name="arrow-forward" size={16} color="#0c2047" />
+              </Pressable>
+            </View>
           </View>
 
           <View style={styles.routeBlock}>
@@ -322,7 +389,15 @@ export default function FlightResultsScreen() {
               <Ionicons name="time-outline" size={14} color="#0c2047" />
               <Text style={styles.metaText}>{flight.duration}</Text>
             </View>
-            <Text style={styles.price}>{flight.price}/pax</Text>
+            <View style={styles.metaPill}>
+              <Ionicons name="swap-horizontal" size={14} color="#0c2047" />
+              <Text style={styles.metaText}>{flight.stopsLabel || 'Direct flight'}</Text>
+            </View>
+          </View>
+
+          <View style={styles.stopRow}>
+            <Ionicons name="pin-outline" size={14} color="#5c6270" />
+            <Text style={styles.stopText}>{flight.stopCities || 'Non-stop service'}</Text>
           </View>
         </View>
       ))}
@@ -460,6 +535,51 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     elevation: 2,
   },
+  pillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#f2f5fb',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  pillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0c2047',
+  },
+  tripMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  tripMetaTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  tripMetaText: {
+    color: '#0c2047',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  tripMetaSub: {
+    color: '#5c6270',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  airlineChips: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -480,6 +600,26 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 11,
   },
+  airlineCount: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0c2047',
+  },
+  logoCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#eef3fb',
+    borderWidth: 1,
+    borderColor: '#d7e1f1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0c2047',
+  },
   airlineName: {
     fontSize: 16,
     fontWeight: '800',
@@ -489,6 +629,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#5c6270',
     fontWeight: '600',
+  },
+  priceBlock: {
+    alignItems: 'flex-end',
+    gap: 6,
   },
   locationColumn: {
     flex: 1,
@@ -561,6 +705,32 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '800',
     color: '#0c2047',
+  },
+  ctaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#e5edff',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  ctaText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0c2047',
+    textTransform: 'capitalize',
+  },
+  stopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 2,
+  },
+  stopText: {
+    color: '#5c6270',
+    fontSize: 12,
+    fontWeight: '600',
   },
   alignEnd: {
     textAlign: 'right',
