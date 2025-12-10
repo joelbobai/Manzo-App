@@ -18,7 +18,7 @@ type DatePickerTarget = { type: 'departure' | 'return' | 'leg'; legId?: string }
 
 const flightHeroImage =
   'https://images.unsplash.com/photo-1670699054598-776d35923e75?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
-const SEARCH_API_URL = process.env.EXPO_PUBLIC_FLIGHT_SEARCH_URL ?? '';
+const SEARCH_API_URL = process.env.EXPO_PUBLIC_FLIGHT_SEARCH_URL ?? 'http://192.168.0.135:3800/api/v1/flights/flightOffersSearch';
 
 type Airport = {
   IATA: string;
@@ -784,21 +784,24 @@ export default function FlightsScreen() {
       Alert.alert('Payload ready', JSON.stringify(payload, null, 2));
       return;
     }
-
+    console.log('SEARCH_API_URL', SEARCH_API_URL);
+console.log('Submitting search to API payload:', payload);
     try {
       const response = await fetch(SEARCH_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-
+console.log('Submitting search to API JSON.stringify(payload)',JSON.stringify(payload));
+const data = await response.json();
+console.log('Response status:', data);
       const result = await response.json().catch(() => null);
 
       if (!response.ok) {
         throw new Error((result as { message?: string })?.message ?? 'Search request failed');
       }
 
-      Alert.alert('Search submitted', 'Your flight search was sent to the API.');
+      Alert.alert('Search submitted', 'Your flight search was sent to the API.', result);
     } catch (error) {
       console.error('Flight search error', error);
       Alert.alert('Search failed', (error as Error).message);
