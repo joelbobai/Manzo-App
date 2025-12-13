@@ -148,16 +148,8 @@ export default function FlightResultsScreen() {
       ?.map((leg, index) => {
         const originCode = (leg as { originLocationCode?: string }).originLocationCode ?? '';
         const destinationCode = (leg as { destinationLocationCode?: string }).destinationLocationCode ?? '';
-        const from =
-          formatCityName((leg as { from?: string }).from, originCode) ||
-          formatCityName(getCityLabelFromCode(originCode), originCode) ||
-          originCode ||
-          'N/A';
-        const to =
-          formatCityName((leg as { to?: string }).to, destinationCode) ||
-          formatCityName(getCityLabelFromCode(destinationCode), destinationCode) ||
-          destinationCode ||
-          'N/A';
+        const from = (leg as { from?: string }).from || originCode || 'N/A';
+        const to = (leg as { to?: string }).to || destinationCode || 'N/A';
         const dateValue =
           (leg as { departureDate?: string }).departureDate ??
           (leg as { departureDateTimeRange?: string }).departureDateTimeRange ??
@@ -199,8 +191,8 @@ export default function FlightResultsScreen() {
     ...flight,
     id: flight.id || `${index + 1}`,
     tagColor: flight.tagColor || '#1e73f6',
-    fromCity: formatCityName(flight.fromCity, flight.fromCode),
-    toCity: formatCityName(flight.toCity, flight.toCode),
+    fromCity: flight.fromCity || defaultFromCity,
+    toCity: flight.toCity || defaultToCity,
   }));
 
   const defaultFromCode = summaryPrimary?.fromCode ?? 'SBY';
