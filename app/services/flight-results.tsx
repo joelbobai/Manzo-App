@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useRef } from 'react';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import IATAAirports from '../../data/IATA_airports.json';
 
@@ -14,29 +14,60 @@ type Airport = {
   DST: string | null;
 };
 
-type FlightCard = {
+type FlightLocation = { iataCode?: string; at?: string };
+
+type FlightSegment = {
+  carrierCode?: string;
+  number?: string;
+  departure?: FlightLocation;
+  arrival?: FlightLocation;
+  duration?: string;
+  numberOfStops?: number;
+};
+
+type Itinerary = {
+  duration?: string;
+  segments?: FlightSegment[];
+};
+
+type TravelerPricing = {
+  travelerId?: string;
+  travelerType?: 'ADULT' | 'CHILD' | 'HELD_INFANT' | 'SEATED_INFANT';
+  price?: {
+    total?: string;
+    base?: string;
+    currency?: string;
+  };
+};
+
+type Price = {
+  currency?: string;
+  total?: string;
+  base?: string;
+  fees?: any;
+  grandTotal?: string;
+};
+
+export type FlightOffer = {
   id: string;
-  airline: string;
-  airlineCode: string;
-  aircraft: string;
-  cabinClass?: string;
-  passengersLabel?: string;
-  refundable?: boolean;
-  tripLabel?: string;
-  fromCode: string;
-  toCode: string;
-  fromCity: string;
-  toCity: string;
-  departureTime: string;
-  arrivalTime?: string;
-  duration: string;
-  stopsLabel?: string;
-  stopCities?: string;
-  fareNote?: string;
-  airlinesCount?: number;
-  price: string;
-  tagColor: string;
-  flightNumber: string;
+  oneWay?: boolean;
+  numberOfBookableSeats?: number;
+  itineraries?: Itinerary[];
+  price?: Price;
+  travelerPricings?: TravelerPricing[];
+};
+
+export type FlightRightsDictionaries = {
+  carriers?: Record<string, string>;
+  aircraft?: Record<string, string>;
+  locations?: Record<string, { cityCode?: string; countryCode?: string }>;
+  currencies?: Record<string, string>;
+};
+
+export type FlightRightsResponse = {
+  flightRights?: FlightOffer[];
+  flightRightsDictionaries?: FlightRightsDictionaries;
+  fetchedAt?: string;
 };
 
 type SummaryLeg = {
@@ -46,6 +77,27 @@ type SummaryLeg = {
   fromCity: string;
   toCity: string;
   dateLabel: string;
+};
+
+type NormalizedLeg = {
+  from: string;
+  to: string;
+  departAt: string;
+  arriveAt: string;
+  departTimeLabel: string;
+  arriveTimeLabel: string;
+  durationLabel: string;
+  stopsLabel: string;
+};
+
+export type NormalizedOffer = {
+  id: string;
+  airlineLabel: string;
+  outbound: NormalizedLeg;
+  inbound?: NormalizedLeg;
+  priceLabel: string;
+  seatsLeft?: number;
+  raw: FlightOffer;
 };
 
 const airportsData = IATAAirports as Airport[];
@@ -102,28 +154,126 @@ const formatCityName = (label?: string | null, code?: string | null) => {
   return primaryPart || label || code || '';
 };
 
-const getRefundableStatus = (flight: FlightCard) => {
-  if (typeof flight.refundable === 'boolean') return flight.refundable;
+export const formatTime = (isoString?: string | null) => {
+  if (!isoString) return '';
 
-  const note = flight.fareNote?.toLowerCase() ?? '';
+  const date = new Date(isoString);
 
-  if (note.includes('non refund')) return false;
-  if (note.includes('refund')) return true;
+  if (Number.isNaN(date.getTime())) return '';
 
-  return true;
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+};
+
+export const parseDuration = (duration?: string | null) => {
+  if (!duration) return '';
+
+  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/i);
+
+  if (!match) return duration;
+
+  const hours = Number(match[1] ?? 0);
+  const minutes = Number(match[2] ?? 0);
+  const seconds = Number(match[3] ?? 0);
+
+  const parts = [] as string[];
+
+  if (hours) parts.push(`${hours}h`);
+  if (minutes) parts.push(`${minutes}m`);
+  if (seconds && !hours && !minutes) parts.push(`${seconds}s`);
+
+  return parts.join(' ') || duration;
+};
+
+export const getItineraryEndpoints = (itinerary?: Itinerary) => {
+  const segments = itinerary?.segments ?? [];
+  const firstSegment = segments[0];
+  const lastSegment = segments[segments.length - 1];
+
+  return {
+    from: firstSegment?.departure?.iataCode ?? '',
+    to: lastSegment?.arrival?.iataCode ?? '',
+    departAt: firstSegment?.departure?.at ?? '',
+    arriveAt: lastSegment?.arrival?.at ?? '',
+    segments,
+  };
+};
+
+export const getStopsLabel = (segments: FlightSegment[]) => {
+  if (!segments || segments.length <= 1) return 'Non-stop';
+
+  const stopsFromNumbers = segments.reduce((total, segment) => total + (segment.numberOfStops ?? 0), 0);
+  const stopCount = stopsFromNumbers > 0 ? stopsFromNumbers : Math.max(segments.length - 1, 0);
+
+  if (stopCount <= 0) return 'Non-stop';
+  if (stopCount === 1) return '1 stop';
+  return `${stopCount} stops`;
+};
+
+export const normalizeOffer = (
+  offer: FlightOffer,
+  dictionaries?: FlightRightsDictionaries,
+): NormalizedOffer => {
+  const outboundItinerary = offer.itineraries?.[0];
+  const inboundItinerary = offer.itineraries?.[1];
+
+  const outboundEndpoints = getItineraryEndpoints(outboundItinerary);
+  const inboundEndpoints = getItineraryEndpoints(inboundItinerary);
+
+  const carrierCode = outboundEndpoints.segments?.[0]?.carrierCode ?? '';
+  const airlineName = carrierCode ? dictionaries?.carriers?.[carrierCode] ?? carrierCode : 'Unknown airline';
+  const airlineLabel = carrierCode ? `${airlineName} (${carrierCode})` : airlineName;
+
+  const outbound: NormalizedLeg = {
+    from: outboundEndpoints.from,
+    to: outboundEndpoints.to,
+    departAt: outboundEndpoints.departAt,
+    arriveAt: outboundEndpoints.arriveAt,
+    departTimeLabel: formatTime(outboundEndpoints.departAt) || outboundEndpoints.departAt,
+    arriveTimeLabel: formatTime(outboundEndpoints.arriveAt) || outboundEndpoints.arriveAt,
+    durationLabel: parseDuration(outboundItinerary?.duration),
+    stopsLabel: getStopsLabel(outboundEndpoints.segments ?? []),
+  };
+
+  const inbound: NormalizedLeg | undefined = inboundItinerary
+    ? {
+        from: inboundEndpoints.from,
+        to: inboundEndpoints.to,
+        departAt: inboundEndpoints.departAt,
+        arriveAt: inboundEndpoints.arriveAt,
+        departTimeLabel: formatTime(inboundEndpoints.departAt) || inboundEndpoints.departAt,
+        arriveTimeLabel: formatTime(inboundEndpoints.arriveAt) || inboundEndpoints.arriveAt,
+        durationLabel: parseDuration(inboundItinerary.duration),
+        stopsLabel: getStopsLabel(inboundEndpoints.segments ?? []),
+      }
+    : undefined;
+
+  const priceCurrency = offer.price?.currency ?? '';
+  const priceTotal = offer.price?.total ?? '';
+  const priceLabel = `${priceCurrency} ${priceTotal}`.trim();
+
+  return {
+    id: offer.id?.toString() ?? `${Math.random()}`,
+    airlineLabel,
+    outbound,
+    inbound,
+    priceLabel,
+    seatsLeft: offer.numberOfBookableSeats,
+    raw: offer,
+  };
 };
 
 export default function FlightResultsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ data?: string; payload?: string; source?: string; response?: string }>();
+  const selectedOfferRef = useRef<FlightOffer | null>(null);
 
-  const parsedResult = useMemo(() => {
+  const parsedResult = useMemo<FlightRightsResponse | null>(() => {
     const rawResult = params.response ?? params.data;
 
     if (!rawResult) return null;
 
     try {
-      return JSON.parse(rawResult);
+      return JSON.parse(rawResult) as FlightRightsResponse;
     } catch (error) {
       console.error('Unable to parse search result', error);
       return null;
@@ -193,266 +343,257 @@ export default function FlightResultsScreen() {
   }, [parsedPayload]);
 
   const summaryPrimary = summaryLegs[0];
-
-  const flights: FlightCard[] = (
-    (parsedResult as { flights?: FlightCard[] } | null)?.flights ?? (
-      parsedResult as { data?: FlightCard[] } | null
-    )?.data ??
-    []
-  ).map((flight, index) => ({
-    ...flight,
-    id: flight.id || `${index + 1}`,
-    tagColor: flight.tagColor || '#1e73f6',
-    fromCity: flight.fromCity || defaultFromCity,
-    toCity: flight.toCity || defaultToCity,
-  }));
-
   const defaultFromCode = summaryPrimary?.fromCode ?? 'SBY';
   const defaultToCode = summaryPrimary?.toCode ?? 'DPS';
   const defaultFromCity = summaryPrimary?.fromCity ?? 'Surabaya, East Java';
   const defaultToCity = summaryPrimary?.toCity ?? 'Denpasar, Bali';
   const defaultDateLabel = summaryPrimary?.dateLabel ?? 'Dec 21, 2023';
-  const defaultTimeLabel = '09:00 AM';
 
-  const mockFlights: FlightCard[] = [
-    {
-      id: '1',
-      airline: 'Garuda Indonesia',
-      airlineCode: 'GA',
-      aircraft: 'A330',
-      cabinClass: 'Economy',
-      passengersLabel: '1 Adult',
-      refundable: true,
-      tripLabel: 'Round trip',
-      fromCode: defaultFromCode,
-      toCode: defaultToCode,
-      fromCity: defaultFromCity,
-      toCity: defaultToCity,
-      departureTime: defaultTimeLabel,
-      arrivalTime: '01:30 PM',
-      duration: '4h30m',
-      stopsLabel: '2 stop overs',
-      stopCities: 'Addis Ababa, Hessen',
-      fareNote: 'Refundable, Penalty Applies',
-      airlinesCount: 2,
-      price: '$320',
-      tagColor: '#1e73f6',
-      flightNumber: 'GA-01',
-    },
-    {
-      id: '2',
-      airline: 'Lion Air',
-      airlineCode: 'JT',
-      aircraft: 'JT-25',
-      cabinClass: 'Economy',
-      passengersLabel: '1 Adult',
-      refundable: false,
-      tripLabel: 'Round trip',
-      fromCode: defaultFromCode,
-      toCode: defaultToCode,
-      fromCity: defaultFromCity,
-      toCity: defaultToCity,
-      departureTime: '12:30 PM',
-      arrivalTime: '04:20 PM',
-      duration: '3h50m',
-      stopsLabel: '1 stop over',
-      stopCities: 'Kuala Lumpur',
-      fareNote: 'Free reschedule within 24h',
-      airlinesCount: 1,
-      price: '$479',
-      tagColor: '#F89A1C',
-      flightNumber: 'JT-25',
-    },
-    {
-      id: '3',
-      airline: 'Citilink',
-      airlineCode: 'QG',
-      aircraft: 'QG-101',
-      cabinClass: 'Economy',
-      passengersLabel: '1 Adult',
-      refundable: true,
-      tripLabel: 'Round trip',
-      fromCode: defaultFromCode,
-      toCode: defaultToCode,
-      fromCity: defaultFromCity,
-      toCity: defaultToCity,
-      departureTime: '05:45 PM',
-      arrivalTime: '09:55 PM',
-      duration: '4h10m',
-      stopsLabel: 'Direct flight',
-      stopCities: 'Non-stop service',
-      fareNote: 'Baggage included',
-      airlinesCount: 1,
-      price: '$289',
-      tagColor: '#3DBE29',
-      flightNumber: 'QG-101',
-    },
-  ];
+  const passengersLabel = useMemo(() => {
+    const passenger = (parsedPayload as { passenger?: Record<string, number> } | null)?.passenger;
 
-  const cardsToShow = flights.length > 0 ? flights : mockFlights;
+    if (!passenger) return '1 Adult';
 
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
+    const adults =
+      (passenger as { adults?: number; adult?: number }).adults ??
+      (passenger as { adult?: number }).adult ??
+      0;
+    const children = (passenger as { children?: number }).children ?? 0;
+    const infants = (passenger as { infants?: number }).infants ?? 0;
+
+    const parts: string[] = [];
+
+    if (adults) parts.push(`${adults} Adult${adults > 1 ? 's' : ''}`);
+    if (children) parts.push(`${children} Child${children > 1 ? 'ren' : ''}`);
+    if (infants) parts.push(`${infants} Infant${infants > 1 ? 's' : ''}`);
+
+    return parts.length > 0 ? parts.join(', ') : '1 Adult';
+  }, [parsedPayload]);
+
+  const normalizedOffers = useMemo<NormalizedOffer[]>(() => {
+    const offers = parsedResult?.flightRights ?? [];
+
+    return offers.map((offer) => normalizeOffer(offer, parsedResult?.flightRightsDictionaries));
+  }, [parsedResult]);
+
+  const encodedDictionaries = useMemo(() => {
+    try {
+      return parsedResult?.flightRightsDictionaries
+        ? encodeURIComponent(JSON.stringify(parsedResult.flightRightsDictionaries))
+        : undefined;
+    } catch (error) {
+      console.error('Unable to encode dictionaries', error);
+      return undefined;
+    }
+  }, [parsedResult?.flightRightsDictionaries]);
+
+  const handleSelectOffer = (offer: NormalizedOffer) => {
+    selectedOfferRef.current = offer.raw;
+
+    const encodedOffer = (() => {
+      try {
+        return encodeURIComponent(JSON.stringify(offer.raw));
+      } catch (error) {
+        console.error('Unable to encode selected offer', error);
+        return '';
+      }
+    })();
+
+    const navigationParams: Record<string, string> = {
+      offer: encodedOffer,
+      source: params.source ?? 'live',
+    };
+
+    if (encodedDictionaries) {
+      navigationParams.dictionaries = encodedDictionaries;
+    }
+
+    router.push({
+      pathname: '/services/flight-recheck',
+      params: navigationParams,
+    });
+  };
+
+  const renderHeader = () => (
+    <View style={styles.listHeader}>
       <View style={styles.topBar}>
-      <View style={styles.topActions}>
-        <Pressable style={styles.topIcon} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={22} color="#ffffff" />
-        </Pressable>
-        <Text style={styles.topTitle}>Result Search</Text>
-        <View style={styles.topIcon}>
-          <Ionicons name="options" size={20} color="#ffffff" />
-        </View>
-        </View>
-
-            <View style={styles.summaryCard}>
-        {summaryLegs.map((leg, index) => (
-          <View
-            key={leg.id}
-            style={[styles.summaryLeg, index > 0 && styles.summaryLegDivider]}
-          >
-            <View style={styles.routeRow}>
-              <View style={styles.locationBlock}>
-                <Text style={styles.airportCode}>{leg.fromCode}</Text>
-                <Text style={styles.airportCity}>{leg.fromCity}</Text>
-              </View>
-
-              <View style={styles.summaryConnector}>
-                <View style={[styles.dash, styles.summaryDash]} />
-                <View style={[styles.planeIconWrapper, styles.summaryPlaneIcon]}>
-                  <Ionicons name="airplane" size={16} color="#0c2047" />
-                </View>
-                <View style={[styles.dash, styles.summaryDash]} />
-              </View>
-
-              <View style={[styles.locationBlock, styles.alignEnd]}>
-                <Text style={styles.airportCode}>{leg.toCode}</Text>
-                <Text style={styles.airportCity}>{leg.toCity}</Text>
-              </View>
-            </View>
-            <View style={styles.summaryMetaRow}>
-              <Ionicons name="calendar" size={14} color="#ffffff" />
-              <Text style={styles.summaryMetaText}>{leg.dateLabel}</Text>
-            </View>
+        <View style={styles.topActions}>
+          <Pressable style={styles.topIcon} onPress={() => router.back()}>
+            <Ionicons name="chevron-back" size={22} color="#ffffff" />
+          </Pressable>
+          <Text style={styles.topTitle}>Result Search</Text>
+          <View style={styles.topIcon}>
+            <Ionicons name="options" size={20} color="#ffffff" />
           </View>
-        ))}
-      </View>
-      </View>
+        </View>
 
-  
-
-      <Text style={styles.sectionLabel}>Result</Text>
-
-      {cardsToShow.map((flight) => {
-        const isRefundable = getRefundableStatus(flight);
-
-        return (
-          <View key={flight.id} style={styles.flightCard}>
-            <View style={styles.pillRow}>
-             
-              <View style={styles.pill}>
-                <Ionicons name="person-outline" size={14} color="#0c2047" />
-                <Text style={styles.pillText}>{flight.passengersLabel || '1 Adult'}</Text>
-              </View>
-              <View
-                style={[
-                  styles.refundBadge,
-                  isRefundable ? styles.refundableBadge : styles.nonRefundableBadge,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.refundBadgeText,
-                    isRefundable ? styles.refundableBadgeText : styles.nonRefundableBadgeText,
-                  ]}
-                >
-                  {isRefundable ? '(Refundable, Penalty Applies)' : '(Non Refundable)'}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.tripMetaRow}>
-
-
-            </View>
-
-            <View style={styles.cardHeader}>
-              <View style={styles.badgeRow}>
-                <View style={styles.logoCircle}>
-                  <Text style={styles.logoText}>{flight.airlineCode}</Text>
+        <View style={styles.summaryCard}>
+          {summaryLegs.map((leg, index) => (
+            <View
+              key={leg.id}
+              style={[styles.summaryLeg, index > 0 && styles.summaryLegDivider]}
+            >
+              <View style={styles.routeRow}>
+                <View style={styles.locationBlock}>
+                  <Text style={styles.airportCode}>{leg.fromCode}</Text>
+                  <Text style={styles.airportCity}>{leg.fromCity}</Text>
                 </View>
-                <View>
-                  <Text style={styles.airlineName}>{flight.airline}</Text>
-                  <Text style={styles.aircraft}>Flight {flight.flightNumber}</Text>
-                </View>
-              </View>
 
-              <Pressable style={styles.ctaButton}>
-                <Text style={styles.ctaText}>Book now</Text>
-                <Ionicons name="arrow-forward" size={16} color="#0c2047" />
-              </Pressable>
-            </View>
-
-            <View style={styles.routeBlock}>
-              <View style={styles.locationColumn}>
-                <Text style={styles.airportCodeLarge}>{flight.fromCode}</Text>
-                <Text style={styles.cityLabel}>{flight.fromCity}</Text>
-              </View>
-
-              <View style={styles.connector}>
-                <View style={styles.dash} />
-                <View style={styles.planeIconColumn}>
-                  <View style={styles.planeIconWrapper}>
+                <View style={styles.summaryConnector}>
+                  <View style={[styles.dash, styles.summaryDash]} />
+                  <View style={[styles.planeIconWrapper, styles.summaryPlaneIcon]}>
                     <Ionicons name="airplane" size={16} color="#0c2047" />
                   </View>
-                  <Text style={styles.durationLabel}>{flight.duration || '4h 30m'}</Text>
+                  <View style={[styles.dash, styles.summaryDash]} />
                 </View>
-                <View style={styles.dash} />
-              </View>
 
-              <View style={[styles.locationColumn, styles.alignEnd]}>
-                <Text style={[styles.airportCodeLarge, styles.alignEnd]}>{flight.toCode}</Text>
-                <Text style={[styles.cityLabel, styles.alignEnd]}>{flight.toCity}</Text>
+                <View style={[styles.locationBlock, styles.alignEnd]}>
+                  <Text style={styles.airportCode}>{leg.toCode}</Text>
+                  <Text style={styles.airportCity}>{leg.toCity}</Text>
+                </View>
               </View>
-            </View>
-
-            <View style={styles.timeRow}>
-              <Text style={styles.timeText}>{flight.departureTime}</Text>
-              <Text style={styles.timeText}>{flight.arrivalTime || ''}</Text>
-            </View>
-
-            <View style={styles.detailRow}>
-              <View style={styles.pill}>
-                <Ionicons name="flag-outline" size={14} color="#0c2047" />
-                <Text style={styles.pillText}>
-                  To {formatCityName(getCityLabelFromCode(flight.toCode), flight.toCode) || flight.toCity || defaultToCity}
-                </Text>
-              </View>
-              <View style={styles.metaPill}>
-                <Ionicons name="briefcase-outline" size={14} color="#0c2047" />
-                <Text style={styles.metaText}>{flight.cabinClass || 'Economy'}</Text>
-              </View>
-              <View style={styles.metaPill}>
-                <Ionicons name="swap-horizontal" size={14} color="#0c2047" />
-                <Text style={styles.metaText}>{flight.stopsLabel || 'Direct flight'}</Text>
+              <View style={styles.summaryMetaRow}>
+                <Ionicons name="calendar" size={14} color="#ffffff" />
+                <Text style={styles.summaryMetaText}>{leg.dateLabel}</Text>
               </View>
             </View>
+          ))}
+        </View>
+      </View>
 
-            <View style={styles.bottomRow}>
-              <View style={styles.stopRow}>
-                <Ionicons name="pin-outline" size={14} color="#5c6270" />
-                <Text style={styles.stopText}>{flight.stopCities || 'Non-stop service'}</Text>
-              </View>
+      <Text style={styles.sectionLabel}>Result</Text>
+    </View>
+  );
 
-              <View style={[styles.priceBlock, styles.priceFooter]}>
-                <Text style={styles.price}>{flight.price}</Text>
-              </View>
-            </View>
+  const renderOfferCard = ({ item }: { item: NormalizedOffer }) => {
+    const outboundFrom = item.outbound.from || defaultFromCode;
+    const outboundTo = item.outbound.to || defaultToCode;
+    const outboundFromCity =
+      formatCityName(getCityLabelFromCode(outboundFrom), outboundFrom) || defaultFromCity;
+    const outboundToCity = formatCityName(getCityLabelFromCode(outboundTo), outboundTo) || defaultToCity;
 
+    const carrierCode = item.raw.itineraries?.[0]?.segments?.[0]?.carrierCode ?? outboundFrom;
+    const flightNumber = item.raw.itineraries?.[0]?.segments?.[0]?.number ?? '';
 
+    return (
+      <Pressable key={item.id} style={styles.flightCard} onPress={() => handleSelectOffer(item)}>
+        <View style={styles.pillRow}>
+          <View style={styles.pill}>
+            <Ionicons name="person-outline" size={14} color="#0c2047" />
+            <Text style={styles.pillText}>{passengersLabel}</Text>
           </View>
-        );
-      })}
-    </ScrollView>
+          <View style={[styles.refundBadge, styles.refundableBadge]}>
+            <Text style={[styles.refundBadgeText, styles.refundableBadgeText]}>
+              (Refundable, Penalty Applies)
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.cardHeader}>
+          <View style={styles.badgeRow}>
+            <View style={styles.logoCircle}>
+              <Text style={styles.logoText}>{carrierCode}</Text>
+            </View>
+            <View>
+              <Text style={styles.airlineName}>{item.airlineLabel}</Text>
+              <Text style={styles.aircraft}>Flight {carrierCode}{flightNumber ? `-${flightNumber}` : ''}</Text>
+            </View>
+            <View style={[styles.tag, { backgroundColor: '#1e73f6' }]}>
+              <Text style={styles.tagText}>Flight</Text>
+            </View>
+          </View>
+
+          <View style={styles.locationColumn}>
+            <Text style={styles.airportCodeLarge}>{outboundFrom}</Text>
+            <Text style={styles.cityLabel}>{outboundFromCity}</Text>
+          </View>
+
+          <View style={styles.connector}>
+            <View style={styles.dash} />
+            <View style={styles.planeIconColumn}>
+              <View style={styles.planeIconWrapper}>
+                <Ionicons name="airplane" size={16} color="#0c2047" />
+              </View>
+              <Text style={styles.durationLabel}>{item.outbound.durationLabel || 'N/A'}</Text>
+            </View>
+            <View style={styles.dash} />
+          </View>
+
+          <View style={[styles.locationColumn, styles.alignEnd]}>
+            <Text style={[styles.airportCodeLarge, styles.alignEnd]}>{outboundTo}</Text>
+            <Text style={[styles.cityLabel, styles.alignEnd]}>{outboundToCity}</Text>
+          </View>
+        </View>
+
+        <View style={styles.timeRow}>
+          <Text style={styles.timeText}>{item.outbound.departTimeLabel || defaultDateLabel}</Text>
+          <Text style={styles.timeText}>{item.outbound.arriveTimeLabel || ''}</Text>
+        </View>
+
+        {item.inbound && (
+          <View style={styles.inboundBlock}>
+            <Text style={styles.inboundLabel}>Return</Text>
+            <Text style={styles.inboundRoute}>{`${item.inbound.from} → ${item.inbound.to}`}</Text>
+            <Text style={styles.inboundMeta}>
+              {item.inbound.departTimeLabel} - {item.inbound.arriveTimeLabel} • {item.inbound.durationLabel || 'Duration N/A'} • {item.inbound.stopsLabel}
+            </Text>
+          </View>
+        )}
+
+        <View style={styles.detailRow}>
+          <View style={styles.pill}>
+            <Ionicons name="flag-outline" size={14} color="#0c2047" />
+            <Text style={styles.pillText}>
+              To {formatCityName(getCityLabelFromCode(outboundTo), outboundTo) || outboundToCity}
+            </Text>
+          </View>
+          <View style={styles.metaPill}>
+            <Ionicons name="briefcase-outline" size={14} color="#0c2047" />
+            <Text style={styles.metaText}>{'Economy'}</Text>
+          </View>
+          <View style={styles.metaPill}>
+            <Ionicons name="swap-horizontal" size={14} color="#0c2047" />
+            <Text style={styles.metaText}>{item.outbound.stopsLabel || 'Direct flight'}</Text>
+          </View>
+        </View>
+
+        <View style={styles.bottomRow}>
+          <View style={styles.stopRow}>
+            <Ionicons name="pin-outline" size={14} color="#5c6270" />
+            <Text style={styles.stopText}>{item.outbound.stopsLabel || 'Non-stop service'}</Text>
+          </View>
+
+          <View style={[styles.priceBlock, styles.priceFooter]}>
+            <Text style={styles.price}>{item.priceLabel || 'Price unavailable'}</Text>
+            {typeof item.seatsLeft === 'number' && (
+              <Text style={styles.seatsLeft}>Seats left: {item.seatsLeft}</Text>
+            )}
+          </View>
+        </View>
+      </Pressable>
+    );
+  };
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyState}>
+      <Ionicons name="airplane" size={32} color="#5c6270" />
+      <Text style={styles.emptyTitle}>No flights found</Text>
+      <Text style={styles.emptySubtitle}>
+        We couldn't find any flights for this search. Try adjusting your dates or airports.
+      </Text>
+    </View>
+  );
+
+  return (
+    <FlatList
+      data={normalizedOffers}
+      keyExtractor={(item) => item.id}
+      renderItem={renderOfferCard}
+      contentContainerStyle={[styles.container, normalizedOffers.length === 0 && styles.emptyContent]}
+      ListHeaderComponent={renderHeader}
+      ListEmptyComponent={renderEmptyState}
+      showsVerticalScrollIndicator={false}
+    />
   );
 }
 
@@ -460,6 +601,12 @@ const styles = StyleSheet.create({
   container: {
     gap: 14,
     backgroundColor: '#f5f7fb',
+    flexGrow: 1,
+  },
+  listHeader: {
+    gap: 12,
+  },
+  emptyContent: {
     flexGrow: 1,
   },
   topBar: {
@@ -770,6 +917,27 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#0c2047',
   },
+  inboundBlock: {
+    marginTop: 10,
+    backgroundColor: '#f0f4fb',
+    padding: 12,
+    borderRadius: 12,
+    gap: 4,
+  },
+  inboundLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0c2047',
+  },
+  inboundRoute: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0c2047',
+  },
+  inboundMeta: {
+    fontSize: 12,
+    color: '#5c6270',
+  },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -794,6 +962,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '800',
     color: '#0c2047',
+  },
+  seatsLeft: {
+    marginTop: 2,
+    fontSize: 12,
+    color: '#5c6270',
   },
   ctaButton: {
     flexDirection: 'row',
@@ -825,6 +998,24 @@ const styles = StyleSheet.create({
     color: '#5c6270',
     fontSize: 12,
     fontWeight: '600',
+  },
+  emptyState: {
+    padding: 18,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: 16,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0c2047',
+  },
+  emptySubtitle: {
+    textAlign: 'center',
+    color: '#5c6270',
+    fontSize: 13,
   },
   alignEnd: {
     textAlign: 'right',
