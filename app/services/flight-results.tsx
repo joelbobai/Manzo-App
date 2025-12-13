@@ -345,14 +345,6 @@ export default function FlightResultsScreen() {
                 <Text style={styles.aircraft}>Flight {flight.flightNumber}</Text>
               </View>
             </View>
-
-            <View style={styles.priceBlock}>
-              <Text style={styles.price}>{flight.price}</Text>
-              <Pressable style={styles.ctaButton}>
-                <Text style={styles.ctaText}>Book now</Text>
-                <Ionicons name="arrow-forward" size={16} color="#0c2047" />
-              </Pressable>
-            </View>
           </View>
 
           <View style={styles.routeBlock}>
@@ -401,6 +393,14 @@ export default function FlightResultsScreen() {
           <View style={styles.stopRow}>
             <Ionicons name="pin-outline" size={14} color="#5c6270" />
             <Text style={styles.stopText}>{flight.stopCities || 'Non-stop service'}</Text>
+          </View>
+
+          <View style={[styles.priceBlock, styles.priceFooter]}>
+            <Text style={styles.price}>{flight.price}</Text>
+            <Pressable style={styles.ctaButton}>
+              <Text style={styles.ctaText}>Book now</Text>
+              <Ionicons name="arrow-forward" size={16} color="#0c2047" />
+            </Pressable>
           </View>
         </View>
       ))}
@@ -636,6 +636,10 @@ const styles = StyleSheet.create({
   priceBlock: {
     alignItems: 'flex-end',
     gap: 6,
+  },
+  priceFooter: {
+    alignSelf: 'flex-end',
+    marginTop: 4,
   },
   locationColumn: {
     flex: 1,
