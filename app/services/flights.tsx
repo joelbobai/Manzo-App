@@ -20,10 +20,10 @@ type DatePickerTarget = { type: 'departure' | 'return' | 'leg'; legId?: string }
 
 const flightHeroImage =
   'https://images.unsplash.com/photo-1670699054598-776d35923e75?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
-const SEARCH_API_URL = process.env.EXPO_PUBLIC_FLIGHT_SEARCH_URL ?? 'http://192.168.0.136:3800/api/v1/flights/flightOffersSearch';
+const SEARCH_API_URL = process.env.EXPO_PUBLIC_FLIGHT_SEARCH_URL ?? 'http://172.20.10.2:3800/api/v1/flights/flightOffersSearch';
 const MULTI_CITY_SEARCH_API_URL =
   process.env.EXPO_PUBLIC_FLIGHT_SEARCH_MULTI_CITY_URL ??
-  'http://192.168.0.136:3800/api/v1/flights/flightOffersSearchMultiCity';
+  'http://172.20.10.2:3800/api/v1/flights/flightOffersSearchMultiCity';
 
 type Airport = {
   IATA: string;

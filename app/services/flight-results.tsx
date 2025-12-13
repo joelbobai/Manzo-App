@@ -255,22 +255,86 @@ export default function FlightResultsScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.topBar}>
+      <View style={styles.topActions}>
         <Pressable style={styles.topIcon} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={22} color="#ffffff" />
         </Pressable>
-        <View style={styles.topMeta}>
-          <Text style={styles.topTitle}>Flight results</Text>
-          <Text style={styles.topSubtitle}>
-            {defaultFromCity} • {defaultToCity} • {defaultDateLabel}
-          </Text>
+        <Text style={styles.topTitle}>Result Search</Text>
+        <View style={styles.topIcon}>
+          <Ionicons name="options" size={20} color="#ffffff" />
         </View>
-        <View style={styles.topPlaceholder} />
+        </View>
+
+            <View style={styles.summaryCard}>
+        {summaryLegs.map((leg, index) => (
+          <View
+            key={leg.id}
+            style={[styles.summaryLeg, index > 0 && styles.summaryLegDivider]}
+          >
+            <View style={styles.routeRow}>
+              <View style={styles.locationBlock}>
+                <Text style={styles.airportCode}>{leg.fromCode}</Text>
+                <Text style={styles.airportCity}>{leg.fromCity}</Text>
+              </View>
+
+              <View style={styles.summaryConnector}>
+                <View style={[styles.dash, styles.summaryDash]} />
+                <View style={[styles.planeIconWrapper, styles.summaryPlaneIcon]}>
+                  <Ionicons name="airplane" size={16} color="#0c2047" />
+                </View>
+                <View style={[styles.dash, styles.summaryDash]} />
+              </View>
+
+              <View style={[styles.locationBlock, styles.alignEnd]}>
+                <Text style={styles.airportCode}>{leg.toCode}</Text>
+                <Text style={styles.airportCity}>{leg.toCity}</Text>
+              </View>
+            </View>
+            <View style={styles.summaryMetaRow}>
+              <Ionicons name="calendar" size={14} color="#ffffff" />
+              <Text style={styles.summaryMetaText}>{leg.dateLabel}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
       </View>
 
-      <Text style={styles.sectionLabel}>Available flights</Text>
+  
+
+      <Text style={styles.sectionLabel}>Result</Text>
 
       {cardsToShow.map((flight) => (
         <View key={flight.id} style={styles.flightCard}>
+          <View style={styles.pillRow}>
+            <View style={styles.pill}>
+              <Ionicons name="flag-outline" size={14} color="#0c2047" />
+              <Text style={styles.pillText}>To {flight.toCity || defaultToCity}</Text>
+            </View>
+            <View style={styles.pill}>
+              <Ionicons name="briefcase-outline" size={14} color="#0c2047" />
+              <Text style={styles.pillText}>{flight.cabinClass || 'Economy'}</Text>
+            </View>
+            <View style={styles.pill}>
+              <Ionicons name="person-outline" size={14} color="#0c2047" />
+              <Text style={styles.pillText}>{flight.passengersLabel || '1 Adult'}</Text>
+            </View>
+          </View>
+
+          <View style={styles.tripMetaRow}>
+            <View style={styles.tripMetaTextWrap}>
+              <Text style={styles.tripMetaText}>
+                {flight.tripLabel || 'Round trip'} • {defaultDateLabel}
+              </Text>
+              <Text style={styles.tripMetaSub}>{flight.fareNote || 'Refundable options available'}</Text>
+            </View>
+            <View style={styles.airlineChips}>
+              <View style={[styles.badge, { backgroundColor: `${flight.tagColor}14` }]}>
+                <Text style={[styles.badgeText, { color: flight.tagColor }]}>Airlines</Text>
+              </View>
+              <Text style={styles.airlineCount}>{flight.airlinesCount ?? 1} Airline{(flight.airlinesCount ?? 1) > 1 ? 's' : ''}</Text>
+            </View>
+          </View>
+
           <View style={styles.cardHeader}>
             <View style={styles.badgeRow}>
               <View style={styles.logoCircle}>
@@ -278,12 +342,9 @@ export default function FlightResultsScreen() {
               </View>
               <View>
                 <Text style={styles.airlineName}>{flight.airline}</Text>
-                <Text style={styles.aircraft}>
-                  Flight {flight.flightNumber} • {flight.cabinClass || 'Economy'}
-                </Text>
+                <Text style={styles.aircraft}>Flight {flight.flightNumber}</Text>
               </View>
             </View>
-          
 
             <View style={styles.priceBlock}>
               <Text style={styles.price}>{flight.price}</Text>
@@ -295,8 +356,7 @@ export default function FlightResultsScreen() {
           </View>
 
           <View style={styles.routeBlock}>
-            <View style={styles.timeColumn}>
-              <Text style={styles.timeLabel}>{flight.departureTime}</Text>
+            <View style={styles.locationColumn}>
               <Text style={styles.airportCodeLarge}>{flight.fromCode}</Text>
               <Text style={styles.cityLabel}>{flight.fromCity}</Text>
             </View>
@@ -309,33 +369,41 @@ export default function FlightResultsScreen() {
               <View style={styles.dash} />
             </View>
 
-            <View style={[styles.timeColumn, styles.alignEnd]}>
-              <Text style={[styles.timeLabel, styles.alignEnd]}>{flight.arrivalTime || ''}</Text>
+            <View style={[styles.locationColumn, styles.alignEnd]}>
               <Text style={[styles.airportCodeLarge, styles.alignEnd]}>{flight.toCode}</Text>
               <Text style={[styles.cityLabel, styles.alignEnd]}>{flight.toCity}</Text>
             </View>
           </View>
 
+          <View style={styles.timeRow}>
+            <Text style={styles.timeText}>{flight.departureTime}</Text>
+            <Text style={styles.timeText}>{flight.arrivalTime || ''}</Text>
+          </View>
+
           <View style={styles.detailRow}>
-            <View style={styles.metaItem}>
-              <Ionicons name="time-outline" size={14} color="#5c6270" />
-              <Text style={styles.metaText}>{flight.duration}</Text>
-            </View>
-            <View style={styles.metaItem}>
-              <Ionicons name="swap-horizontal" size={14} color="#5c6270" />
-              <Text style={styles.metaText}>{flight.stopsLabel || 'Direct flight'}</Text>
-            </View>
-            <View style={styles.metaItem}>
-              <Ionicons name="calendar" size={14} color="#5c6270" />
+            <View style={styles.metaPill}>
+              <Ionicons name="calendar" size={14} color="#0c2047" />
               <Text style={styles.metaText}>{defaultDateLabel}</Text>
             </View>
+            <View style={styles.metaPill}>
+              <Ionicons name="time-outline" size={14} color="#0c2047" />
+              <Text style={styles.metaText}>{flight.duration}</Text>
+            </View>
+            <View style={styles.metaPill}>
+              <Ionicons name="swap-horizontal" size={14} color="#0c2047" />
+              <Text style={styles.metaText}>{flight.stopsLabel || 'Direct flight'}</Text>
+            </View>
+          </View>
+
+          <View style={styles.stopRow}>
+            <Ionicons name="pin-outline" size={14} color="#5c6270" />
+            <Text style={styles.stopText}>{flight.stopCities || 'Non-stop service'}</Text>
           </View>
         </View>
       ))}
     </ScrollView>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {
@@ -344,15 +412,27 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   topBar: {
-    marginTop: 12,
+    paddingTop: 48,
+    flexDirection: "column",
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#0c2047',
+    
+    paddingVertical: 14,
+
+    borderRadius: 14,
+    marginBottom: 6,
+  },
+  topActions: {
+    width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'space-between',
     backgroundColor: '#0c2047',
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: 14,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   topIcon: {
     width: 34,
@@ -362,23 +442,78 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: '#1e73f6',
   },
-  topMeta: {
-    flex: 1,
-    gap: 2,
-  },
   topTitle: {
     color: '#ffffff',
     fontWeight: '800',
     fontSize: 16,
   },
-  topSubtitle: {
-    color: '#e3e8f2',
-    fontSize: 12,
-    fontWeight: '600',
+  summaryCard: {
+     width: "100%",
+    // backgroundColor: '#ffffff',
+    // borderRadius: 16,
+    padding: 16,
+    gap: 12,
+    // borderWidth: 1,
+    // borderColor: '#e4eaf5',
   },
-  topPlaceholder: {
-    width: 34,
-    height: 34,
+  summaryLeg: {
+    width: '100%',
+    gap: 8,
+  },
+  summaryLegDivider: {
+    paddingTop: 12,
+    marginTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#ffffff33',
+  },
+  routeRow: {
+    width: "100%",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  locationBlock: {
+    flex: 1,
+    gap: 4,
+  },
+  airportCode: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  airportCity: {
+    fontSize: 12,
+    color: '#fff',
+  },
+  summaryConnector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  summaryDash: {
+    borderColor: '#ffffffb3',
+  },
+  summaryPlaneIcon: {
+    backgroundColor: '#ffffff',
+    borderColor: '#ffffffb3',
+  },
+  routeConnector: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+  },
+  summaryMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  summaryMetaText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
   },
   sectionLabel: {
     fontSize: 15,
@@ -456,20 +591,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  logoCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#eef3fb',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#d7e1f1',
+  badge: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
   },
-  logoText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#0c2047',
+  badgeText: {
+    fontWeight: '700',
+    fontSize: 11,
   },
   airlineCount: {
     fontSize: 12,
@@ -505,40 +634,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: 6,
   },
-  price: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#0c2047',
-  },
-  ctaButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#e5edff',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  ctaText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#0c2047',
-    textTransform: 'capitalize',
-  },
-  routeBlock: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  timeColumn: {
+  locationColumn: {
     flex: 1,
     gap: 6,
-  },
-  timeLabel: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#0c2047',
   },
   airportCodeLarge: {
     fontSize: 30,
@@ -548,6 +646,12 @@ const styles = StyleSheet.create({
   cityLabel: {
     fontSize: 12,
     color: '#5c6270',
+  },
+  routeBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
   },
   connector: {
     flexDirection: 'row',
@@ -571,22 +675,36 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#d7e1f1',
   },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 4,
+  },
+  timeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0c2047',
+  },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 10,
-    paddingTop: 6,
   },
-  metaItem: {
+  metaPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    backgroundColor: '#f0f4fb',
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 14,
   },
-  metaText: {
-    fontSize: 12,
-    color: '#5c6270',
-    fontWeight: '700',
+  price: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0c2047',
   },
   ctaButton: {
     flexDirection: 'row',
@@ -619,4 +737,3 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
 });
-
