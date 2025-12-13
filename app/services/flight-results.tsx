@@ -405,6 +405,10 @@ export default function FlightResultsScreen() {
               <Text style={styles.price}>{flight.price}</Text>
             </View>
           </View>
+
+          <View style={[styles.priceBlock, styles.priceFooter]}>
+            <Text style={styles.price}>{flight.price}</Text>
+          </View>
         </View>
       ))}
     </ScrollView>
