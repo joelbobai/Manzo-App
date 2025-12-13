@@ -815,15 +815,33 @@ export default function FlightsScreen() {
         body: JSON.stringify(payload),
       });
       console.log('Submitting search to API JSON.stringify(payload)', JSON.stringify(payload));
-      const result = await response.json().catch(() => null);
+
+      const responseText = await response.text();
+      const parsedResponse = (() => {
+        try {
+          return JSON.parse(responseText);
+        } catch (error) {
+          console.error('Unable to parse flight search response', error);
+          return null;
+        }
+      })();
+
+      const navigationParams: Record<string, string> = {
+        payload: JSON.stringify(payload),
+        source: response.ok ? 'live' : 'error',
+        response: responseText,
+      };
 
       if (!response.ok) {
-        throw new Error((result as { message?: string })?.message ?? 'Search request failed');
+        router.push({ pathname: '/services/flight-results', params: navigationParams });
+        throw new Error(
+          (parsedResponse as { message?: string })?.message ?? 'Search request failed',
+        );
       }
 
       router.push({
         pathname: '/services/flight-results',
-        params: { data: JSON.stringify(result), payload: JSON.stringify(payload), source: 'live' },
+        params: { ...navigationParams, data: JSON.stringify(parsedResponse ?? {}) },
       });
     } catch (error) {
       console.error('Flight search error', error);
