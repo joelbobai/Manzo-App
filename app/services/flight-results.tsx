@@ -81,18 +81,20 @@ const getCityLabelFromCode = (code?: string | null) => {
 
 export default function FlightResultsScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ data?: string; payload?: string; source?: string }>();
+  const params = useLocalSearchParams<{ data?: string; payload?: string; source?: string; response?: string }>();
 
   const parsedResult = useMemo(() => {
-    if (!params.data) return null;
+    const rawResult = params.response ?? params.data;
+
+    if (!rawResult) return null;
 
     try {
-      return JSON.parse(params.data);
+      return JSON.parse(rawResult);
     } catch (error) {
       console.error('Unable to parse search result', error);
       return null;
     }
-  }, [params.data]);
+  }, [params.data, params.response]);
 
   const parsedPayload = useMemo(() => {
     if (!params.payload) return null;
