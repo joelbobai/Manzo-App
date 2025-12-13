@@ -265,6 +265,7 @@ export const normalizeOffer = (
 export default function FlightResultsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ data?: string; payload?: string; source?: string; response?: string }>();
+  const selectedOfferRef = useRef<FlightOffer | null>(null);
 
   const parsedResult = useMemo<FlightRightsResponse | null>(() => {
     const rawResult = params.response ?? params.data;
