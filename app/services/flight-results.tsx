@@ -346,13 +346,10 @@ export default function FlightResultsScreen() {
               </View>
             </View>
 
-            <View style={styles.priceBlock}>
-              <Text style={styles.price}>{flight.price}</Text>
-              <Pressable style={styles.ctaButton}>
-                <Text style={styles.ctaText}>Book now</Text>
-                <Ionicons name="arrow-forward" size={16} color="#0c2047" />
-              </Pressable>
-            </View>
+            <Pressable style={styles.ctaButton}>
+              <Text style={styles.ctaText}>Book now</Text>
+              <Ionicons name="arrow-forward" size={16} color="#0c2047" />
+            </Pressable>
           </View>
 
           <View style={styles.routeBlock}>
@@ -398,9 +395,15 @@ export default function FlightResultsScreen() {
             </View>
           </View>
 
-          <View style={styles.stopRow}>
-            <Ionicons name="pin-outline" size={14} color="#5c6270" />
-            <Text style={styles.stopText}>{flight.stopCities || 'Non-stop service'}</Text>
+          <View style={styles.bottomRow}>
+            <View style={styles.stopRow}>
+              <Ionicons name="pin-outline" size={14} color="#5c6270" />
+              <Text style={styles.stopText}>{flight.stopCities || 'Non-stop service'}</Text>
+            </View>
+
+            <View style={[styles.priceBlock, styles.priceFooter]}>
+              <Text style={styles.price}>{flight.price}</Text>
+            </View>
           </View>
         </View>
       ))}
@@ -637,6 +640,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: 6,
   },
+  priceFooter: {
+    marginTop: 0,
+  },
   locationColumn: {
     flex: 1,
     gap: 6,
@@ -743,6 +749,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 2,
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   stopText: {
     color: '#5c6270',
