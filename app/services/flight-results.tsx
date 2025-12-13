@@ -113,6 +113,51 @@ const getRefundableStatus = (flight: FlightCard) => {
   return true;
 };
 
+const formatDuration = (value?: string | null) => {
+  if (!value) return '';
+
+  const match = value.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/i);
+  if (!match) return value;
+
+  const [, hours, minutes] = match;
+  const hourLabel = hours ? `${hours}h` : '';
+  const minuteLabel = minutes ? `${minutes}m` : '';
+
+  return `${hourLabel}${hourLabel && minuteLabel ? ' ' : ''}${minuteLabel}`.trim();
+};
+
+const formatTime = (value?: string | null) => {
+  if (!value) return '';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+};
+
+const formatPrice = (amount?: string | null, currency?: string | null) => {
+  if (!amount) return '';
+
+  const numeric = Number(amount);
+
+  if (!Number.isNaN(numeric) && currency) {
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency,
+        maximumFractionDigits: 2,
+      }).format(numeric);
+    } catch (error) {
+      console.error('Unable to format price', error);
+    }
+  }
+
+  return currency ? `${currency} ${amount}` : amount;
+};
+
 export default function FlightResultsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ data?: string; payload?: string; source?: string; response?: string }>();
@@ -194,25 +239,137 @@ export default function FlightResultsScreen() {
 
   const summaryPrimary = summaryLegs[0];
 
-  const flights: FlightCard[] = (
-    (parsedResult as { flights?: FlightCard[] } | null)?.flights ?? (
-      parsedResult as { data?: FlightCard[] } | null
-    )?.data ??
-    []
-  ).map((flight, index) => ({
-    ...flight,
-    id: flight.id || `${index + 1}`,
-    tagColor: flight.tagColor || '#1e73f6',
-    fromCity: flight.fromCity || defaultFromCity,
-    toCity: flight.toCity || defaultToCity,
-  }));
-
   const defaultFromCode = summaryPrimary?.fromCode ?? 'SBY';
   const defaultToCode = summaryPrimary?.toCode ?? 'DPS';
   const defaultFromCity = summaryPrimary?.fromCity ?? 'Surabaya, East Java';
   const defaultToCity = summaryPrimary?.toCity ?? 'Denpasar, Bali';
-  const defaultDateLabel = summaryPrimary?.dateLabel ?? 'Dec 21, 2023';
   const defaultTimeLabel = '09:00 AM';
+
+  const passengerLabel = useMemo(() => {
+    const passengers = (parsedPayload as { passenger?: { adults?: number; children?: number; infants?: number } })
+      ?.passenger;
+
+    if (!passengers) return '1 Adult';
+
+    const parts = [
+      passengers.adults ? `${passengers.adults} Adult${passengers.adults > 1 ? 's' : ''}` : null,
+      passengers.children
+        ? `${passengers.children} Child${passengers.children > 1 ? 'ren' : ''}`
+        : null,
+      passengers.infants ? `${passengers.infants} Infant${passengers.infants > 1 ? 's' : ''}` : null,
+    ].filter(Boolean);
+
+    return parts.join(', ') || '1 Adult';
+  }, [parsedPayload]);
+
+  const flights: FlightCard[] = useMemo(() => {
+    const responseFlights =
+      (parsedResult as { flights?: FlightCard[] } | null)?.flights ??
+      (parsedResult as { data?: FlightCard[] } | null)?.data ??
+      [];
+
+    if (Array.isArray(responseFlights) && responseFlights.length > 0) {
+      return responseFlights.map((flight, index) => ({
+        ...flight,
+        id: flight.id || `${index + 1}`,
+        tagColor: flight.tagColor || '#1e73f6',
+        fromCity: flight.fromCity || defaultFromCity,
+        toCity: flight.toCity || defaultToCity,
+      }));
+    }
+
+    const flightRights = (parsedResult as { flightRights?: unknown })?.flightRights;
+    const dictionaries = (parsedResult as { flightRightsDictionaries?: unknown })?.flightRightsDictionaries ?? {};
+
+    if (!Array.isArray(flightRights)) return [];
+
+    const carrierNames = (dictionaries as { carriers?: Record<string, string> })?.carriers ?? {};
+    const aircraftNames = (dictionaries as { aircraft?: Record<string, string> })?.aircraft ?? {};
+
+    return flightRights
+      .map((offer, index) => {
+        const itineraries = (offer as { itineraries?: unknown[] })?.itineraries ?? [];
+        const outbound = itineraries[0] as { duration?: string; segments?: unknown[] };
+        const outboundSegments = outbound?.segments ?? [];
+        const firstSegment = outboundSegments[0] as {
+          departure?: { iataCode?: string; at?: string };
+          arrival?: { iataCode?: string; at?: string };
+          carrierCode?: string;
+          number?: string;
+          aircraft?: { code?: string };
+        };
+        const lastSegment = outboundSegments[outboundSegments.length - 1] as {
+          arrival?: { iataCode?: string; at?: string };
+        };
+
+        const travelerPricing = (offer as { travelerPricings?: unknown[] })?.travelerPricings?.[0] as
+          | { fareDetailsBySegment?: { cabin?: string }[] }
+          | undefined;
+
+        const cabinClass = travelerPricing?.fareDetailsBySegment?.[0]?.cabin;
+
+        const stopCities = (outboundSegments.slice(0, -1) as { arrival?: { iataCode?: string } }[])
+          .map((segment) => segment.arrival?.iataCode)
+          .filter(Boolean)
+          .map((code) => formatCityName(getCityLabelFromCode(code), code))
+          .filter(Boolean)
+          .join(', ');
+
+        const stopsCount = Math.max((outboundSegments?.length ?? 1) - 1, 0);
+
+        const price = (offer as { price?: { grandTotal?: string; total?: string; currency?: string } })?.price;
+
+        const refundRule = (offer as { fareRules?: { rules?: { category?: string; maxPenaltyAmount?: string; notApplicable?: boolean }[] } })
+          ?.fareRules?.rules?.find((rule) => rule.category === 'REFUND');
+
+        const airlinesCount = new Set(
+          (itineraries as { segments?: { carrierCode?: string }[] }[])?.flatMap((itinerary) =>
+            ((itinerary ?? {}) as { segments?: { carrierCode?: string }[] }).segments
+              ?.map((segment) => segment.carrierCode)
+              .filter(Boolean) ?? []
+          )
+        ).size;
+
+        const departureCode = firstSegment?.departure?.iataCode ?? defaultFromCode;
+        const arrivalCode = lastSegment?.arrival?.iataCode ?? defaultToCode;
+
+        return {
+          id: (offer as { id?: string | number })?.id?.toString() ?? `${index + 1}`,
+          airline: carrierNames[firstSegment?.carrierCode ?? ''] || firstSegment?.carrierCode || 'Unknown airline',
+          airlineCode: firstSegment?.carrierCode || '—',
+          aircraft: aircraftNames[firstSegment?.aircraft?.code ?? ''] || firstSegment?.aircraft?.code || '',
+          cabinClass: cabinClass ? `${cabinClass.charAt(0)}${cabinClass.slice(1).toLowerCase()}` : undefined,
+          passengersLabel: passengerLabel,
+          refundable: refundRule?.notApplicable || refundRule?.maxPenaltyAmount === '0',
+          tripLabel: (offer as { oneWay?: boolean })?.oneWay ? 'One way' : 'Round trip',
+          fromCode: departureCode,
+          toCode: arrivalCode,
+          fromCity: formatCityName(getCityLabelFromCode(departureCode), departureCode) || defaultFromCity,
+          toCity: formatCityName(getCityLabelFromCode(arrivalCode), arrivalCode) || defaultToCity,
+          departureTime: formatTime(firstSegment?.departure?.at) || defaultTimeLabel,
+          arrivalTime: formatTime(lastSegment?.arrival?.at),
+          duration: formatDuration(outbound?.duration) || outbound?.duration || '—',
+          stopsLabel: stopsCount === 0 ? 'Direct flight' : `${stopsCount} stop over${stopsCount > 1 ? 's' : ''}`,
+          stopCities: stopCities || undefined,
+          airlinesCount,
+          price: formatPrice(price?.grandTotal ?? price?.total, price?.currency),
+          tagColor: '#1e73f6',
+          flightNumber:
+            firstSegment?.carrierCode || firstSegment?.number
+              ? `${firstSegment?.carrierCode ?? ''}${firstSegment?.number ? `-${firstSegment.number}` : ''}`
+              : (offer as { id?: string | number })?.id?.toString() ?? 'N/A',
+        } satisfies FlightCard;
+      })
+      .filter(Boolean);
+  }, [
+    parsedResult,
+    defaultFromCity,
+    defaultFromCode,
+    defaultToCity,
+    defaultToCode,
+    defaultTimeLabel,
+    passengerLabel,
+  ]);
 
   const mockFlights: FlightCard[] = [
     {
