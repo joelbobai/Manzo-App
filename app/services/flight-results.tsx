@@ -345,6 +345,11 @@ export default function FlightResultsScreen() {
                 <Text style={styles.aircraft}>Flight {flight.flightNumber}</Text>
               </View>
             </View>
+
+            <Pressable style={styles.ctaButton}>
+              <Text style={styles.ctaText}>Book now</Text>
+              <Ionicons name="arrow-forward" size={16} color="#0c2047" />
+            </Pressable>
           </View>
 
           <View style={styles.routeBlock}>
@@ -397,10 +402,6 @@ export default function FlightResultsScreen() {
 
           <View style={[styles.priceBlock, styles.priceFooter]}>
             <Text style={styles.price}>{flight.price}</Text>
-            <Pressable style={styles.ctaButton}>
-              <Text style={styles.ctaText}>Book now</Text>
-              <Ionicons name="arrow-forward" size={16} color="#0c2047" />
-            </Pressable>
           </View>
         </View>
       ))}
