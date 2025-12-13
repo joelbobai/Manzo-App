@@ -363,8 +363,11 @@ export default function FlightResultsScreen() {
 
             <View style={styles.connector}>
               <View style={styles.dash} />
-              <View style={styles.planeIconWrapper}>
-                <Ionicons name="airplane" size={16} color="#0c2047" />
+              <View style={styles.planeIconColumn}>
+                <View style={styles.planeIconWrapper}>
+                  <Ionicons name="airplane" size={16} color="#0c2047" />
+                </View>
+                <Text style={styles.durationLabel}>{flight.duration || '4h 30m'}</Text>
               </View>
               <View style={styles.dash} />
             </View>
@@ -386,8 +389,8 @@ export default function FlightResultsScreen() {
               <Text style={styles.metaText}>{defaultDateLabel}</Text>
             </View>
             <View style={styles.metaPill}>
-              <Ionicons name="time-outline" size={14} color="#0c2047" />
-              <Text style={styles.metaText}>{flight.duration}</Text>
+              <Ionicons name="briefcase-outline" size={14} color="#0c2047" />
+              <Text style={styles.metaText}>{flight.cabinClass || 'Economy'}</Text>
             </View>
             <View style={styles.metaPill}>
               <Ionicons name="swap-horizontal" size={14} color="#0c2047" />
@@ -658,6 +661,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
+  planeIconColumn: {
+    alignItems: 'center',
+    gap: 6,
+  },
   dash: {
     width: 44,
     height: 1,
@@ -674,6 +681,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#d7e1f1',
+  },
+  durationLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0c2047',
   },
   timeRow: {
     flexDirection: 'row',
@@ -700,6 +712,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 9,
     borderRadius: 14,
+  },
+  metaText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0c2047',
   },
   price: {
     fontSize: 20,
