@@ -64,15 +64,25 @@ const getCityAndCountry = (airport: Airport | null | undefined) => {
   };
 };
 
-const getCityLabelFromCode = (code?: string | null) => {
-  if (!code) return '';
+const airportLabelCache = new Map<string, string | null>();
 
-  const airport = airportsData.find((item) => item.IATA === code);
-  if (!airport) return '';
+const getCityLabelFromCode = (code?: string | null) => {
+  const normalizedCode = code?.trim().toUpperCase();
+
+  if (!normalizedCode) return '';
+
+  if (airportLabelCache.has(normalizedCode)) {
+    return airportLabelCache.get(normalizedCode) ?? '';
+  }
+
+  const airport = airportsData.find((item) => item.IATA?.toUpperCase() === normalizedCode);
 
   const { city, country } = getCityAndCountry(airport);
+  const label = city || country || normalizedCode;
 
-  return city || country || code;
+  airportLabelCache.set(normalizedCode, label || null);
+
+  return label;
 };
 
 const formatCityName = (label?: string | null, code?: string | null) => {
