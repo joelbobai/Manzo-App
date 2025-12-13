@@ -397,9 +397,11 @@ export default function FlightResultsScreen() {
           </View>
 
           <View style={styles.detailRow}>
-            <View style={styles.pill}>
+           <View style={styles.pill}>
               <Ionicons name="flag-outline" size={14} color="#0c2047" />
-              <Text style={styles.pillText}>To {flight.toCity || defaultToCity}</Text>
+              <Text style={styles.pillText}>
+                To {formatCityName(getCityLabelFromCode(flight.toCode), flight.toCode) || flight.toCity || defaultToCity}
+              </Text>
             </View>
             <View style={styles.metaPill}>
               <Ionicons name="briefcase-outline" size={14} color="#0c2047" />
