@@ -39,6 +39,137 @@ type FlightCard = {
   flightNumber: string;
 };
 
+type SearchLeg = {
+  id?: string | number;
+  originLocationCode?: string;
+  destinationLocationCode?: string;
+  from?: string;
+  to?: string;
+  departureDate?: string;
+  departureDateTimeRange?: string;
+};
+
+type PassengerCounts = {
+  adults?: number;
+  children?: number;
+  infants?: number;
+};
+
+type FlightSearchPayload = {
+  flightSearch?: SearchLeg[];
+  passenger?: PassengerCounts;
+};
+
+type FlightRightsResponse = {
+  flights?: FlightCard[];
+  data?: FlightCard[];
+  flightRights?: FlightOffer[];
+  flightRightsDictionaries?: FlightRightsDictionaries;
+};
+
+type FlightOffer = {
+  type?: string;
+  id?: string | number;
+  source?: string;
+  instantTicketingRequired?: boolean;
+  nonHomogeneous?: boolean;
+  oneWay?: boolean;
+  isUpsellOffer?: boolean;
+  lastTicketingDate?: string;
+  lastTicketingDateTime?: string;
+  numberOfBookableSeats?: number;
+  itineraries?: Itinerary[];
+  price?: OfferPrice;
+  pricingOptions?: PricingOptions;
+  validatingAirlineCodes?: string[];
+  travelerPricings?: TravelerPricing[];
+  fareRules?: FareRules;
+};
+
+type Itinerary = {
+  duration?: string;
+  segments?: Segment[];
+};
+
+type DateLocation = {
+  iataCode?: string;
+  terminal?: string;
+  at?: string;
+};
+
+type Stop = {
+  iataCode?: string;
+  duration?: string;
+  arrivalAt?: string;
+  departureAt?: string;
+};
+
+type Segment = {
+  departure?: DateLocation;
+  arrival?: DateLocation;
+  carrierCode?: string;
+  number?: string;
+  aircraft?: {
+    code?: string;
+  };
+  operating?: {
+    carrierCode?: string;
+    carrierName?: string;
+  };
+  duration?: string;
+  stops?: Stop[];
+  id?: string;
+  numberOfStops?: number;
+  blacklistedInEU?: boolean;
+};
+
+type OfferPrice = {
+  currency?: string;
+  total?: string;
+  base?: string;
+  fees?: { amount?: string; type?: string }[];
+  grandTotal?: string;
+  additionalServices?: { amount?: string; type?: string }[];
+};
+
+type PricingOptions = {
+  fareType?: string[];
+  includedCheckedBagsOnly?: boolean;
+};
+
+type FareRules = {
+  rules?: { category?: string; maxPenaltyAmount?: string; notApplicable?: boolean }[];
+};
+
+type TravelerPricing = {
+  travelerId?: string;
+  fareOption?: string;
+  travelerType?: string;
+  price?: {
+    currency?: string;
+    total?: string;
+    base?: string;
+  };
+  fareDetailsBySegment?: {
+    segmentId?: string;
+    cabin?: string;
+    fareBasis?: string;
+    brandedFare?: string;
+    brandedFareLabel?: string;
+    class?: string;
+    includedCheckedBags?: { quantity?: number } | { weight?: number; weightUnit?: string };
+    includedCabinBags?: { quantity?: number } | { weight?: number; weightUnit?: string };
+    amenities?: { description?: string; isChargeable?: boolean; amenityType?: string }[];
+  }[];
+};
+
+type FlightRightsDictionaries = {
+  locations?: Record<string, { cityCode?: string; countryCode?: string }>;
+  aircraft?: Record<string, string>;
+  currencies?: Record<string, string>;
+  carriers?: Record<string, string>;
+};
+
 type SummaryLeg = {
   id: string;
   fromCode: string;
@@ -113,11 +244,56 @@ const getRefundableStatus = (flight: FlightCard) => {
   return true;
 };
 
+const formatDuration = (value?: string | null) => {
+  if (!value) return '';
+
+  const match = value.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/i);
+  if (!match) return value;
+
+  const [, hours, minutes] = match;
+  const hourLabel = hours ? `${hours}h` : '';
+  const minuteLabel = minutes ? `${minutes}m` : '';
+
+  return `${hourLabel}${hourLabel && minuteLabel ? ' ' : ''}${minuteLabel}`.trim();
+};
+
+const formatTime = (value?: string | null) => {
+  if (!value) return '';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+};
+
+const formatPrice = (amount?: string | null, currency?: string | null) => {
+  if (!amount) return '';
+
+  const numeric = Number(amount);
+
+  if (!Number.isNaN(numeric) && currency) {
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency,
+        maximumFractionDigits: 2,
+      }).format(numeric);
+    } catch (error) {
+      console.error('Unable to format price', error);
+    }
+  }
+
+  return currency ? `${currency} ${amount}` : amount;
+};
+
 export default function FlightResultsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ data?: string; payload?: string; source?: string; response?: string }>();
 
-  const parsedResult = useMemo(() => {
+  const parsedResult = useMemo<FlightRightsResponse | null>(() => {
     const rawResult = params.response ?? params.data;
 
     if (!rawResult) return null;
@@ -130,7 +306,7 @@ export default function FlightResultsScreen() {
     }
   }, [params.data, params.response]);
 
-  const parsedPayload = useMemo(() => {
+  const parsedPayload = useMemo<FlightSearchPayload | null>(() => {
     if (!params.payload) return null;
 
     try {
@@ -158,17 +334,14 @@ export default function FlightResultsScreen() {
   const summaryLegs = useMemo<SummaryLeg[]>(() => {
     const legs = (Array.isArray(parsedPayload?.flightSearch) ? parsedPayload?.flightSearch : [])
       ?.map((leg, index) => {
-        const originCode = (leg as { originLocationCode?: string }).originLocationCode ?? '';
-        const destinationCode = (leg as { destinationLocationCode?: string }).destinationLocationCode ?? '';
-        const from = (leg as { from?: string }).from || originCode || 'N/A';
-        const to = (leg as { to?: string }).to || destinationCode || 'N/A';
-        const dateValue =
-          (leg as { departureDate?: string }).departureDate ??
-          (leg as { departureDateTimeRange?: string }).departureDateTimeRange ??
-          '';
+        const originCode = leg.originLocationCode ?? '';
+        const destinationCode = leg.destinationLocationCode ?? '';
+        const from = leg.from || originCode || 'N/A';
+        const to = leg.to || destinationCode || 'N/A';
+        const dateValue = leg.departureDate ?? leg.departureDateTimeRange ?? '';
 
         return {
-          id: (leg as { id?: string | number }).id?.toString() || `leg-${index + 1}`,
+          id: leg.id?.toString() || `leg-${index + 1}`,
           fromCode: originCode || '---',
           toCode: destinationCode || '---',
           fromCity: from,
@@ -194,25 +367,119 @@ export default function FlightResultsScreen() {
 
   const summaryPrimary = summaryLegs[0];
 
-  const flights: FlightCard[] = (
-    (parsedResult as { flights?: FlightCard[] } | null)?.flights ?? (
-      parsedResult as { data?: FlightCard[] } | null
-    )?.data ??
-    []
-  ).map((flight, index) => ({
-    ...flight,
-    id: flight.id || `${index + 1}`,
-    tagColor: flight.tagColor || '#1e73f6',
-    fromCity: flight.fromCity || defaultFromCity,
-    toCity: flight.toCity || defaultToCity,
-  }));
-
   const defaultFromCode = summaryPrimary?.fromCode ?? 'SBY';
   const defaultToCode = summaryPrimary?.toCode ?? 'DPS';
   const defaultFromCity = summaryPrimary?.fromCity ?? 'Surabaya, East Java';
   const defaultToCity = summaryPrimary?.toCity ?? 'Denpasar, Bali';
-  const defaultDateLabel = summaryPrimary?.dateLabel ?? 'Dec 21, 2023';
   const defaultTimeLabel = '09:00 AM';
+
+  const passengerLabel = useMemo(() => {
+    const passengers = parsedPayload?.passenger;
+
+    if (!passengers) return '1 Adult';
+
+    const parts = [
+      passengers.adults ? `${passengers.adults} Adult${passengers.adults > 1 ? 's' : ''}` : null,
+      passengers.children
+        ? `${passengers.children} Child${passengers.children > 1 ? 'ren' : ''}`
+        : null,
+      passengers.infants ? `${passengers.infants} Infant${passengers.infants > 1 ? 's' : ''}` : null,
+    ].filter(Boolean);
+
+    return parts.join(', ') || '1 Adult';
+  }, [parsedPayload]);
+
+  const flights: FlightCard[] = useMemo(() => {
+    const responseFlights = parsedResult?.flights ?? parsedResult?.data ?? [];
+
+    if (Array.isArray(responseFlights) && responseFlights.length > 0) {
+      return responseFlights.map((flight, index) => ({
+        ...flight,
+        id: flight.id || `${index + 1}`,
+        tagColor: flight.tagColor || '#1e73f6',
+        fromCity: flight.fromCity || defaultFromCity,
+        toCity: flight.toCity || defaultToCity,
+      }));
+    }
+
+    const flightRights = parsedResult?.flightRights;
+    const dictionaries = parsedResult?.flightRightsDictionaries ?? {};
+
+    if (!Array.isArray(flightRights)) return [];
+
+    const carrierNames = dictionaries?.carriers ?? {};
+    const aircraftNames = dictionaries?.aircraft ?? {};
+
+    return flightRights
+      .map((offer, index) => {
+        const itineraries = offer?.itineraries ?? [];
+        const outbound = itineraries[0];
+        const outboundSegments = outbound?.segments ?? [];
+        const firstSegment = outboundSegments[0];
+        const lastSegment = outboundSegments[outboundSegments.length - 1];
+
+        const travelerPricing = offer?.travelerPricings?.[0];
+
+        const cabinClass = travelerPricing?.fareDetailsBySegment?.[0]?.cabin;
+
+        const stopCities = outboundSegments
+          .slice(0, -1)
+          .map((segment) => segment.arrival?.iataCode)
+          .filter(Boolean)
+          .map((code) => formatCityName(getCityLabelFromCode(code), code))
+          .filter(Boolean)
+          .join(', ');
+
+        const stopsCount = Math.max((outboundSegments?.length ?? 1) - 1, 0);
+
+        const price = offer?.price;
+
+        const refundRule = offer?.fareRules?.rules?.find((rule) => rule.category === 'REFUND');
+
+        const airlinesCount = new Set(
+          itineraries?.flatMap((itinerary) => itinerary.segments?.map((segment) => segment.carrierCode).filter(Boolean) ?? [])
+        ).size;
+
+        const departureCode = firstSegment?.departure?.iataCode ?? defaultFromCode;
+        const arrivalCode = lastSegment?.arrival?.iataCode ?? defaultToCode;
+
+        return {
+          id: offer?.id?.toString() ?? `${index + 1}`,
+          airline: carrierNames[firstSegment?.carrierCode ?? ''] || firstSegment?.carrierCode || 'Unknown airline',
+          airlineCode: firstSegment?.carrierCode || '—',
+          aircraft: aircraftNames[firstSegment?.aircraft?.code ?? ''] || firstSegment?.aircraft?.code || '',
+          cabinClass: cabinClass ? `${cabinClass.charAt(0)}${cabinClass.slice(1).toLowerCase()}` : undefined,
+          passengersLabel: passengerLabel,
+          refundable: refundRule?.notApplicable || refundRule?.maxPenaltyAmount === '0',
+          tripLabel: offer?.oneWay ? 'One way' : 'Round trip',
+          fromCode: departureCode,
+          toCode: arrivalCode,
+          fromCity: formatCityName(getCityLabelFromCode(departureCode), departureCode) || defaultFromCity,
+          toCity: formatCityName(getCityLabelFromCode(arrivalCode), arrivalCode) || defaultToCity,
+          departureTime: formatTime(firstSegment?.departure?.at) || defaultTimeLabel,
+          arrivalTime: formatTime(lastSegment?.arrival?.at),
+          duration: formatDuration(outbound?.duration) || outbound?.duration || '—',
+          stopsLabel: stopsCount === 0 ? 'Direct flight' : `${stopsCount} stop over${stopsCount > 1 ? 's' : ''}`,
+          stopCities: stopCities || undefined,
+          airlinesCount,
+          price: formatPrice(price?.grandTotal ?? price?.total, price?.currency),
+          tagColor: '#1e73f6',
+          flightNumber:
+            firstSegment?.carrierCode || firstSegment?.number
+              ? `${firstSegment?.carrierCode ?? ''}${firstSegment?.number ? `-${firstSegment.number}` : ''}`
+              : offer?.id?.toString() ?? 'N/A',
+        } satisfies FlightCard;
+      })
+      .filter(Boolean);
+  }, [
+    parsedResult,
+    defaultFromCity,
+    defaultFromCode,
+    defaultToCity,
+    defaultToCode,
+    defaultTimeLabel,
+    passengerLabel,
+  ]);
 
   const mockFlights: FlightCard[] = [
     {
