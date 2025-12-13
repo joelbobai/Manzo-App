@@ -64,9 +64,6 @@ const getCityAndCountry = (airport: Airport | null | undefined) => {
   };
 };
 
-const getAirportName = (airport: Airport | null | undefined) =>
-  (airport?.Airport_name ?? '').replace(/\u00a0/g, ' ');
-
 const getCityLabelFromCode = (code?: string | null) => {
   if (!code) return '';
 
@@ -74,9 +71,24 @@ const getCityLabelFromCode = (code?: string | null) => {
   if (!airport) return '';
 
   const { city, country } = getCityAndCountry(airport);
-  const airportName = getAirportName(airport);
 
-  return city || airportName || country || code;
+  return city || country || code;
+};
+
+const formatCityName = (label?: string | null, code?: string | null) => {
+  const cityFromCode = getCityLabelFromCode(code);
+
+  if (cityFromCode) return cityFromCode;
+
+  const cleaned = (label ?? '')
+    .replace(/airport/gi, '')
+    .replace(/international/gi, '')
+    .replace(/intl/gi, '')
+    .trim();
+
+  const primaryPart = cleaned.split(',')[0]?.trim();
+
+  return primaryPart || label || code || '';
 };
 
 export default function FlightResultsScreen() {
@@ -171,6 +183,8 @@ export default function FlightResultsScreen() {
     ...flight,
     id: flight.id || `${index + 1}`,
     tagColor: flight.tagColor || '#1e73f6',
+    fromCity: formatCityName(flight.fromCity, flight.fromCode),
+    toCity: formatCityName(flight.toCity, flight.toCode),
   }));
 
   const defaultFromCode = summaryPrimary?.fromCode ?? 'SBY';
