@@ -338,8 +338,16 @@ export default function FlightResultsScreen() {
       {cardsToShow.map((flight) => (
         <View key={flight.id} style={styles.flightCard}>
           <View style={styles.pillRow}>
-           
-           
+            <View style={styles.pill}>
+              <Ionicons name="flag-outline" size={14} color="#0c2047" />
+              <Text style={styles.pillText}>
+                To {formatCityName(getCityLabelFromCode(flight.toCode), flight.toCode) || flight.toCity || defaultToCity}
+              </Text>
+            </View>
+            <View style={styles.pill}>
+              <Ionicons name="briefcase-outline" size={14} color="#0c2047" />
+              <Text style={styles.pillText}>{flight.cabinClass || 'Economy'}</Text>
+            </View>
             <View style={styles.pill}>
               <Ionicons name="person-outline" size={14} color="#0c2047" />
               <Text style={styles.pillText}>{flight.passengersLabel || '1 Adult'}</Text>
