@@ -64,19 +64,41 @@ const getCityAndCountry = (airport: Airport | null | undefined) => {
   };
 };
 
-const getAirportName = (airport: Airport | null | undefined) =>
-  (airport?.Airport_name ?? '').replace(/\u00a0/g, ' ');
+const airportLabelCache = new Map<string, string | null>();
 
 const getCityLabelFromCode = (code?: string | null) => {
-  if (!code) return '';
+  const normalizedCode = code?.trim().toUpperCase();
 
-  const airport = airportsData.find((item) => item.IATA === code);
-  if (!airport) return '';
+  if (!normalizedCode) return '';
+
+  if (airportLabelCache.has(normalizedCode)) {
+    return airportLabelCache.get(normalizedCode) ?? '';
+  }
+
+  const airport = airportsData.find((item) => item.IATA?.toUpperCase() === normalizedCode);
 
   const { city, country } = getCityAndCountry(airport);
-  const airportName = getAirportName(airport);
+  const label = city || country || normalizedCode;
 
-  return city || airportName || country || code;
+  airportLabelCache.set(normalizedCode, label || null);
+
+  return label;
+};
+
+const formatCityName = (label?: string | null, code?: string | null) => {
+  const cityFromCode = getCityLabelFromCode(code);
+
+  if (cityFromCode) return cityFromCode;
+
+  const cleaned = (label ?? '')
+    .replace(/airport/gi, '')
+    .replace(/international/gi, '')
+    .replace(/intl/gi, '')
+    .trim();
+
+  const primaryPart = cleaned.split(',')[0]?.trim();
+
+  return primaryPart || label || code || '';
 };
 
 export default function FlightResultsScreen() {
@@ -127,9 +149,15 @@ export default function FlightResultsScreen() {
         const originCode = (leg as { originLocationCode?: string }).originLocationCode ?? '';
         const destinationCode = (leg as { destinationLocationCode?: string }).destinationLocationCode ?? '';
         const from =
-          (leg as { from?: string }).from || getCityLabelFromCode(originCode) || originCode || 'N/A';
+          formatCityName((leg as { from?: string }).from, originCode) ||
+          formatCityName(getCityLabelFromCode(originCode), originCode) ||
+          originCode ||
+          'N/A';
         const to =
-          (leg as { to?: string }).to || getCityLabelFromCode(destinationCode) || destinationCode || 'N/A';
+          formatCityName((leg as { to?: string }).to, destinationCode) ||
+          formatCityName(getCityLabelFromCode(destinationCode), destinationCode) ||
+          destinationCode ||
+          'N/A';
         const dateValue =
           (leg as { departureDate?: string }).departureDate ??
           (leg as { departureDateTimeRange?: string }).departureDateTimeRange ??
@@ -171,6 +199,8 @@ export default function FlightResultsScreen() {
     ...flight,
     id: flight.id || `${index + 1}`,
     tagColor: flight.tagColor || '#1e73f6',
+    fromCity: formatCityName(flight.fromCity, flight.fromCode),
+    toCity: formatCityName(flight.toCity, flight.toCode),
   }));
 
   const defaultFromCode = summaryPrimary?.fromCode ?? 'SBY';
