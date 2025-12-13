@@ -347,18 +347,8 @@ export default function FlightResultsScreen() {
           </View>
 
           <View style={styles.tripMetaRow}>
-            <View style={styles.tripMetaTextWrap}>
-              <Text style={styles.tripMetaText}>
-                {flight.tripLabel || 'Round trip'} • {defaultDateLabel}
-              </Text>
-              <Text style={styles.tripMetaSub}>{flight.fareNote || 'Refundable options available'}</Text>
-            </View>
-            <View style={styles.airlineChips}>
-              <View style={[styles.badge, { backgroundColor: `${flight.tagColor}14` }]}>
-                <Text style={[styles.badgeText, { color: flight.tagColor }]}>Airlines</Text>
-              </View>
-              <Text style={styles.airlineCount}>{flight.airlinesCount ?? 1} Airline{(flight.airlinesCount ?? 1) > 1 ? 's' : ''}</Text>
-            </View>
+          
+           
           </View>
 
           <View style={styles.cardHeader}>
@@ -407,9 +397,9 @@ export default function FlightResultsScreen() {
           </View>
 
           <View style={styles.detailRow}>
-            <View style={styles.metaPill}>
-              <Ionicons name="calendar" size={14} color="#0c2047" />
-              <Text style={styles.metaText}>{defaultDateLabel}</Text>
+            <View style={styles.pill}>
+              <Ionicons name="flag-outline" size={14} color="#0c2047" />
+              <Text style={styles.pillText}>To {flight.toCity || defaultToCity}</Text>
             </View>
             <View style={styles.metaPill}>
               <Ionicons name="briefcase-outline" size={14} color="#0c2047" />
