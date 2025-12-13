@@ -149,9 +149,15 @@ export default function FlightResultsScreen() {
         const originCode = (leg as { originLocationCode?: string }).originLocationCode ?? '';
         const destinationCode = (leg as { destinationLocationCode?: string }).destinationLocationCode ?? '';
         const from =
-          (leg as { from?: string }).from || getCityLabelFromCode(originCode) || originCode || 'N/A';
+          formatCityName((leg as { from?: string }).from, originCode) ||
+          formatCityName(getCityLabelFromCode(originCode), originCode) ||
+          originCode ||
+          'N/A';
         const to =
-          (leg as { to?: string }).to || getCityLabelFromCode(destinationCode) || destinationCode || 'N/A';
+          formatCityName((leg as { to?: string }).to, destinationCode) ||
+          formatCityName(getCityLabelFromCode(destinationCode), destinationCode) ||
+          destinationCode ||
+          'N/A';
         const dateValue =
           (leg as { departureDate?: string }).departureDate ??
           (leg as { departureDateTimeRange?: string }).departureDateTimeRange ??
