@@ -395,9 +395,15 @@ export default function FlightResultsScreen() {
             </View>
           </View>
 
-          <View style={styles.stopRow}>
-            <Ionicons name="pin-outline" size={14} color="#5c6270" />
-            <Text style={styles.stopText}>{flight.stopCities || 'Non-stop service'}</Text>
+          <View style={styles.bottomRow}>
+            <View style={styles.stopRow}>
+              <Ionicons name="pin-outline" size={14} color="#5c6270" />
+              <Text style={styles.stopText}>{flight.stopCities || 'Non-stop service'}</Text>
+            </View>
+
+            <View style={[styles.priceBlock, styles.priceFooter]}>
+              <Text style={styles.price}>{flight.price}</Text>
+            </View>
           </View>
 
           <View style={[styles.priceBlock, styles.priceFooter]}>
@@ -639,8 +645,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   priceFooter: {
-    alignSelf: 'flex-end',
-    marginTop: 4,
+    marginTop: 0,
   },
   locationColumn: {
     flex: 1,
@@ -748,6 +753,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 2,
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   stopText: {
     color: '#5c6270',
