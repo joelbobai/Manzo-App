@@ -21,6 +21,7 @@ type FlightCard = {
   aircraft: string;
   cabinClass?: string;
   passengersLabel?: string;
+  refundable?: boolean;
   tripLabel?: string;
   fromCode: string;
   toCode: string;
@@ -99,6 +100,17 @@ const formatCityName = (label?: string | null, code?: string | null) => {
   const primaryPart = cleaned.split(',')[0]?.trim();
 
   return primaryPart || label || code || '';
+};
+
+const getRefundableStatus = (flight: FlightCard) => {
+  if (typeof flight.refundable === 'boolean') return flight.refundable;
+
+  const note = flight.fareNote?.toLowerCase() ?? '';
+
+  if (note.includes('non refund')) return false;
+  if (note.includes('refund')) return true;
+
+  return true;
 };
 
 export default function FlightResultsScreen() {
@@ -210,6 +222,7 @@ export default function FlightResultsScreen() {
       aircraft: 'A330',
       cabinClass: 'Economy',
       passengersLabel: '1 Adult',
+      refundable: true,
       tripLabel: 'Round trip',
       fromCode: defaultFromCode,
       toCode: defaultToCode,
@@ -233,6 +246,7 @@ export default function FlightResultsScreen() {
       aircraft: 'JT-25',
       cabinClass: 'Economy',
       passengersLabel: '1 Adult',
+      refundable: false,
       tripLabel: 'Round trip',
       fromCode: defaultFromCode,
       toCode: defaultToCode,
@@ -256,6 +270,7 @@ export default function FlightResultsScreen() {
       aircraft: 'QG-101',
       cabinClass: 'Economy',
       passengersLabel: '1 Adult',
+      refundable: true,
       tripLabel: 'Round trip',
       fromCode: defaultFromCode,
       toCode: defaultToCode,
@@ -327,104 +342,123 @@ export default function FlightResultsScreen() {
 
       <Text style={styles.sectionLabel}>Result</Text>
 
-      {cardsToShow.map((flight) => (
-        <View key={flight.id} style={styles.flightCard}>
-          <View style={styles.pillRow}>
-            <View style={styles.pill}>
-              <Ionicons name="flag-outline" size={14} color="#0c2047" />
-              <Text style={styles.pillText}>
-                To {formatCityName(getCityLabelFromCode(flight.toCode), flight.toCode) || flight.toCity || defaultToCity}
-              </Text>
-            </View>
-            <View style={styles.pill}>
-              <Ionicons name="briefcase-outline" size={14} color="#0c2047" />
-              <Text style={styles.pillText}>{flight.cabinClass || 'Economy'}</Text>
-            </View>
-            <View style={styles.pill}>
-              <Ionicons name="person-outline" size={14} color="#0c2047" />
-              <Text style={styles.pillText}>{flight.passengersLabel || '1 Adult'}</Text>
-            </View>
-          </View>
+      {cardsToShow.map((flight) => {
+        const isRefundable = getRefundableStatus(flight);
 
-          <View style={styles.tripMetaRow}>
-          
-           
-          </View>
-
-          <View style={styles.cardHeader}>
-            <View style={styles.badgeRow}>
-              <View style={styles.logoCircle}>
-                <Text style={styles.logoText}>{flight.airlineCode}</Text>
+        return (
+          <View key={flight.id} style={styles.flightCard}>
+            <View style={styles.pillRow}>
+              <View style={styles.pill}>
+                <Ionicons name="flag-outline" size={14} color="#0c2047" />
+                <Text style={styles.pillText}>
+                  To {formatCityName(getCityLabelFromCode(flight.toCode), flight.toCode) || flight.toCity || defaultToCity}
+                </Text>
               </View>
-              <View>
-                <Text style={styles.airlineName}>{flight.airline}</Text>
-                <Text style={styles.aircraft}>Flight {flight.flightNumber}</Text>
+              <View style={styles.pill}>
+                <Ionicons name="briefcase-outline" size={14} color="#0c2047" />
+                <Text style={styles.pillText}>{flight.cabinClass || 'Economy'}</Text>
+              </View>
+              <View style={styles.pill}>
+                <Ionicons name="person-outline" size={14} color="#0c2047" />
+                <Text style={styles.pillText}>{flight.passengersLabel || '1 Adult'}</Text>
+              </View>
+              <View
+                style={[
+                  styles.refundBadge,
+                  isRefundable ? styles.refundableBadge : styles.nonRefundableBadge,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.refundBadgeText,
+                    isRefundable ? styles.refundableBadgeText : styles.nonRefundableBadgeText,
+                  ]}
+                >
+                  {isRefundable ? '(Refundable, Penalty Applies)' : '(Non Refundable)'}
+                </Text>
               </View>
             </View>
 
-            <Pressable style={styles.ctaButton}>
-              <Text style={styles.ctaText}>Book now</Text>
-              <Ionicons name="arrow-forward" size={16} color="#0c2047" />
-            </Pressable>
-          </View>
+            <View style={styles.tripMetaRow}>
 
-          <View style={styles.routeBlock}>
-            <View style={styles.locationColumn}>
-              <Text style={styles.airportCodeLarge}>{flight.fromCode}</Text>
-              <Text style={styles.cityLabel}>{flight.fromCity}</Text>
+
             </View>
 
-            <View style={styles.connector}>
-              <View style={styles.dash} />
-              <View style={styles.planeIconColumn}>
-                <View style={styles.planeIconWrapper}>
-                  <Ionicons name="airplane" size={16} color="#0c2047" />
+            <View style={styles.cardHeader}>
+              <View style={styles.badgeRow}>
+                <View style={styles.logoCircle}>
+                  <Text style={styles.logoText}>{flight.airlineCode}</Text>
                 </View>
-                <Text style={styles.durationLabel}>{flight.duration || '4h 30m'}</Text>
+                <View>
+                  <Text style={styles.airlineName}>{flight.airline}</Text>
+                  <Text style={styles.aircraft}>Flight {flight.flightNumber}</Text>
+                </View>
               </View>
-              <View style={styles.dash} />
+
+              <Pressable style={styles.ctaButton}>
+                <Text style={styles.ctaText}>Book now</Text>
+                <Ionicons name="arrow-forward" size={16} color="#0c2047" />
+              </Pressable>
             </View>
 
-            <View style={[styles.locationColumn, styles.alignEnd]}>
-              <Text style={[styles.airportCodeLarge, styles.alignEnd]}>{flight.toCode}</Text>
-              <Text style={[styles.cityLabel, styles.alignEnd]}>{flight.toCity}</Text>
+            <View style={styles.routeBlock}>
+              <View style={styles.locationColumn}>
+                <Text style={styles.airportCodeLarge}>{flight.fromCode}</Text>
+                <Text style={styles.cityLabel}>{flight.fromCity}</Text>
+              </View>
+
+              <View style={styles.connector}>
+                <View style={styles.dash} />
+                <View style={styles.planeIconColumn}>
+                  <View style={styles.planeIconWrapper}>
+                    <Ionicons name="airplane" size={16} color="#0c2047" />
+                  </View>
+                  <Text style={styles.durationLabel}>{flight.duration || '4h 30m'}</Text>
+                </View>
+                <View style={styles.dash} />
+              </View>
+
+              <View style={[styles.locationColumn, styles.alignEnd]}>
+                <Text style={[styles.airportCodeLarge, styles.alignEnd]}>{flight.toCode}</Text>
+                <Text style={[styles.cityLabel, styles.alignEnd]}>{flight.toCity}</Text>
+              </View>
             </View>
+
+            <View style={styles.timeRow}>
+              <Text style={styles.timeText}>{flight.departureTime}</Text>
+              <Text style={styles.timeText}>{flight.arrivalTime || ''}</Text>
+            </View>
+
+            <View style={styles.detailRow}>
+              <View style={styles.pill}>
+                <Ionicons name="flag-outline" size={14} color="#0c2047" />
+                <Text style={styles.pillText}>To {flight.toCity || defaultToCity}</Text>
+              </View>
+              <View style={styles.metaPill}>
+                <Ionicons name="briefcase-outline" size={14} color="#0c2047" />
+                <Text style={styles.metaText}>{flight.cabinClass || 'Economy'}</Text>
+              </View>
+              <View style={styles.metaPill}>
+                <Ionicons name="swap-horizontal" size={14} color="#0c2047" />
+                <Text style={styles.metaText}>{flight.stopsLabel || 'Direct flight'}</Text>
+              </View>
+            </View>
+
+            <View style={styles.bottomRow}>
+              <View style={styles.stopRow}>
+                <Ionicons name="pin-outline" size={14} color="#5c6270" />
+                <Text style={styles.stopText}>{flight.stopCities || 'Non-stop service'}</Text>
+              </View>
+
+              <View style={[styles.priceBlock, styles.priceFooter]}>
+                <Text style={styles.price}>{flight.price}</Text>
+              </View>
+            </View>
+
+
           </View>
-
-          <View style={styles.timeRow}>
-            <Text style={styles.timeText}>{flight.departureTime}</Text>
-            <Text style={styles.timeText}>{flight.arrivalTime || ''}</Text>
-          </View>
-
-          <View style={styles.detailRow}>
-            <View style={styles.pill}>
-              <Ionicons name="flag-outline" size={14} color="#0c2047" />
-              <Text style={styles.pillText}>To {flight.toCity || defaultToCity}</Text>
-            </View>
-            <View style={styles.metaPill}>
-              <Ionicons name="briefcase-outline" size={14} color="#0c2047" />
-              <Text style={styles.metaText}>{flight.cabinClass || 'Economy'}</Text>
-            </View>
-            <View style={styles.metaPill}>
-              <Ionicons name="swap-horizontal" size={14} color="#0c2047" />
-              <Text style={styles.metaText}>{flight.stopsLabel || 'Direct flight'}</Text>
-            </View>
-          </View>
-
-          <View style={styles.bottomRow}>
-            <View style={styles.stopRow}>
-              <Ionicons name="pin-outline" size={14} color="#5c6270" />
-              <Text style={styles.stopText}>{flight.stopCities || 'Non-stop service'}</Text>
-            </View>
-
-            <View style={[styles.priceBlock, styles.priceFooter]}>
-              <Text style={styles.price}>{flight.price}</Text>
-            </View>
-          </View>
-
-          
-        </View>
-      ))}
+        );
+      })}
     </ScrollView>
   );
 }
@@ -578,6 +612,27 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#0c2047',
+  },
+  refundBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  refundableBadge: {
+    backgroundColor: '#d8f6df',
+  },
+  nonRefundableBadge: {
+    backgroundColor: '#fdeed9',
+  },
+  refundBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  refundableBadgeText: {
+    color: '#0f8f32',
+  },
+  nonRefundableBadgeText: {
+    color: '#d06000',
   },
   tripMetaRow: {
     flexDirection: 'row',
