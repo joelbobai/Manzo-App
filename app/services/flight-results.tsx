@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import IATAAirports from '../../data/IATA_airports.json';
@@ -310,8 +310,8 @@ export default function FlightResultsScreen() {
       ?.map((leg, index) => {
         const originCode = (leg as { originLocationCode?: string }).originLocationCode ?? '';
         const destinationCode = (leg as { destinationLocationCode?: string }).destinationLocationCode ?? '';
-        const from = (leg as { from?: string }).from || originCode || 'N/A';
-        const to = (leg as { to?: string }).to || destinationCode || 'N/A';
+        const from = (leg as { from?: string }).from || originCode || '';
+        const to = (leg as { to?: string }).to || destinationCode || '';
         const dateValue =
           (leg as { departureDate?: string }).departureDate ??
           (leg as { departureDateTimeRange?: string }).departureDateTimeRange ??
@@ -319,35 +319,31 @@ export default function FlightResultsScreen() {
 
         return {
           id: (leg as { id?: string | number }).id?.toString() || `leg-${index + 1}`,
-          fromCode: originCode || '---',
-          toCode: destinationCode || '---',
+          fromCode: originCode,
+          toCode: destinationCode,
           fromCity: from,
           toCity: to,
-          dateLabel: formatDate(dateValue) || dateValue || 'Date unavailable',
+          dateLabel: formatDate(dateValue) || dateValue || '',
         };
       })
       .filter(Boolean);
 
-    if (legs && legs.length > 0) return legs as SummaryLeg[];
-
-    return [
-      {
-        id: 'leg-1',
-        fromCode: 'SBY',
-        toCode: 'DPS',
-        fromCity: 'Surabaya, East Java',
-        toCity: 'Denpasar, Bali',
-        dateLabel: 'Dec 21, 2023',
-      },
-    ];
+    return (legs as SummaryLeg[]) ?? [];
   }, [parsedPayload]);
 
+  const normalizedOffers = useMemo<NormalizedOffer[]>(() => {
+    const offers = parsedResult?.flightRights ?? [];
+
+    return offers.map((offer) => normalizeOffer(offer, parsedResult?.flightRightsDictionaries));
+  }, [parsedResult]);
+
   const summaryPrimary = summaryLegs[0];
-  const defaultFromCode = summaryPrimary?.fromCode ?? 'SBY';
-  const defaultToCode = summaryPrimary?.toCode ?? 'DPS';
-  const defaultFromCity = summaryPrimary?.fromCity ?? 'Surabaya, East Java';
-  const defaultToCity = summaryPrimary?.toCity ?? 'Denpasar, Bali';
-  const defaultDateLabel = summaryPrimary?.dateLabel ?? 'Dec 21, 2023';
+  const firstNormalizedOffer = normalizedOffers[0];
+  const defaultFromCode = summaryPrimary?.fromCode || firstNormalizedOffer?.outbound.from || '';
+  const defaultToCode = summaryPrimary?.toCode || firstNormalizedOffer?.outbound.to || '';
+  const defaultFromCity = summaryPrimary?.fromCity || formatCityName(getCityLabelFromCode(defaultFromCode), defaultFromCode);
+  const defaultToCity = summaryPrimary?.toCity || formatCityName(getCityLabelFromCode(defaultToCode), defaultToCode);
+  const defaultDateLabel = summaryPrimary?.dateLabel || formatDate(firstNormalizedOffer?.outbound.departAt) || '';
 
   const passengersLabel = useMemo(() => {
     const passenger = (parsedPayload as { passenger?: Record<string, number> } | null)?.passenger;
@@ -369,50 +365,6 @@ export default function FlightResultsScreen() {
 
     return parts.length > 0 ? parts.join(', ') : '1 Adult';
   }, [parsedPayload]);
-
-  const normalizedOffers = useMemo<NormalizedOffer[]>(() => {
-    const offers = parsedResult?.flightRights ?? [];
-
-    return offers.map((offer) => normalizeOffer(offer, parsedResult?.flightRightsDictionaries));
-  }, [parsedResult]);
-
-  const encodedDictionaries = useMemo(() => {
-    try {
-      return parsedResult?.flightRightsDictionaries
-        ? encodeURIComponent(JSON.stringify(parsedResult.flightRightsDictionaries))
-        : undefined;
-    } catch (error) {
-      console.error('Unable to encode dictionaries', error);
-      return undefined;
-    }
-  }, [parsedResult?.flightRightsDictionaries]);
-
-  const handleSelectOffer = (offer: NormalizedOffer) => {
-    selectedOfferRef.current = offer.raw;
-
-    const encodedOffer = (() => {
-      try {
-        return encodeURIComponent(JSON.stringify(offer.raw));
-      } catch (error) {
-        console.error('Unable to encode selected offer', error);
-        return '';
-      }
-    })();
-
-    const navigationParams: Record<string, string> = {
-      offer: encodedOffer,
-      source: params.source ?? 'live',
-    };
-
-    if (encodedDictionaries) {
-      navigationParams.dictionaries = encodedDictionaries;
-    }
-
-    router.push({
-      pathname: '/services/flight-recheck',
-      params: navigationParams,
-    });
-  };
 
   const renderHeader = () => (
     <View style={styles.listHeader}>
@@ -476,7 +428,7 @@ export default function FlightResultsScreen() {
     const flightNumber = item.raw.itineraries?.[0]?.segments?.[0]?.number ?? '';
 
     return (
-      <Pressable key={item.id} style={styles.flightCard} onPress={() => handleSelectOffer(item)}>
+      <Pressable key={item.id} style={styles.flightCard}>
         <View style={styles.pillRow}>
           <View style={styles.pill}>
             <Ionicons name="person-outline" size={14} color="#0c2047" />
