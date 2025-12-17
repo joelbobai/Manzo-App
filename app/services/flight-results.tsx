@@ -4,9 +4,10 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import * as Localization from "expo-localization";
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import IATAAirports from '../../data/IATA_airports.json';
+import FlightBookingSheet from '@/components/FlightBookingSheet';
 
 type Airport = {
   IATA: string;
@@ -174,6 +175,8 @@ export default function FlightResultsScreen() {
   const params = useLocalSearchParams<{ data?: string; payload?: string; source?: string; response?: string }>();
   const { airports } = useAirports();
   const airportList = airports.length > 0 ? airports : airportsData;
+  const [selectedFlight, setSelectedFlight] = useState<any | null>(null);
+  const [isSheetVisible, setSheetVisible] = useState(false);
 
   const parsedResult = useMemo(() => {
     const rawResult = params.response ?? params.data;
@@ -348,9 +351,19 @@ export default function FlightResultsScreen() {
   ];
 
   const cardsToShow = flights.length > 0 ? flights : mockFlights;
+  const handleBookNowPress = (flight: any) => {
+    setSelectedFlight(flight);
+    setSheetVisible(true);
+  };
+
+  const handleCloseSheet = () => {
+    setSheetVisible(false);
+    setSelectedFlight(null);
+  };
 
 
   return (
+    <View style={styles.screen}>
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.topBar}>
       <View style={styles.topActions}>
@@ -492,7 +505,7 @@ export default function FlightResultsScreen() {
                 </View>
               </View>
 
-              <Pressable style={styles.ctaButton}>
+              <Pressable style={styles.ctaButton} onPress={() => handleBookNowPress(flight)}>
                 <Text style={styles.ctaText}>Book now</Text>
                 <Ionicons name="arrow-forward" size={16} color="#ffffff" />
               </Pressable>
@@ -595,10 +608,22 @@ const originSegment = itinerary.segments[0];
         );
       })}
     </ScrollView>
+    <FlightBookingSheet
+      visible={isSheetVisible}
+      flight={selectedFlight}
+      payload={parsedPayload}
+      airports={airportList}
+      onClose={handleCloseSheet}
+    />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: '#f5f7fb',
+  },
   container: {
     gap: 14,
     backgroundColor: '#f5f7fb',
