@@ -20,10 +20,10 @@ type DatePickerTarget = { type: 'departure' | 'return' | 'leg'; legId?: string }
 
 const flightHeroImage =
   'https://images.unsplash.com/photo-1670699054598-776d35923e75?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
-const SEARCH_API_URL = process.env.EXPO_PUBLIC_FLIGHT_SEARCH_URL ?? 'http://172.20.10.2:3800/api/v1/flights/flightOffersSearch';
+const SEARCH_API_URL = process.env.EXPO_PUBLIC_FLIGHT_SEARCH_URL ?? 'http://172.29.65.42:3800/api/v1/flights/flightOffersSearch';
 const MULTI_CITY_SEARCH_API_URL =
   process.env.EXPO_PUBLIC_FLIGHT_SEARCH_MULTI_CITY_URL ??
-  'http://172.20.10.2:3800/api/v1/flights/flightOffersSearchMultiCity';
+  'http://172.29.65.42:3800/api/v1/flights/flightOffersSearchMultiCity';
 
 type Airport = {
   IATA: string;
@@ -815,33 +815,15 @@ export default function FlightsScreen() {
         body: JSON.stringify(payload),
       });
       console.log('Submitting search to API JSON.stringify(payload)', JSON.stringify(payload));
-
-      const responseText = await response.text();
-      const parsedResponse = (() => {
-        try {
-          return JSON.parse(responseText);
-        } catch (error) {
-          console.error('Unable to parse flight search response', error);
-          return null;
-        }
-      })();
-
-      const navigationParams: Record<string, string> = {
-        payload: JSON.stringify(payload),
-        source: response.ok ? 'live' : 'error',
-        response: responseText,
-      };
+      const result = await response.json().catch(() => null);
 
       if (!response.ok) {
-        router.push({ pathname: '/services/flight-results', params: navigationParams });
-        throw new Error(
-          (parsedResponse as { message?: string })?.message ?? 'Search request failed',
-        );
+        throw new Error((result as { message?: string })?.message ?? 'Search request failed');
       }
 
       router.push({
         pathname: '/services/flight-results',
-        params: { ...navigationParams, data: JSON.stringify(parsedResponse ?? {}) },
+        params: { data: JSON.stringify(result), payload: JSON.stringify(payload), source: 'live' },
       });
     } catch (error) {
       console.error('Flight search error', error);
