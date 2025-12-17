@@ -173,6 +173,7 @@ export default function FlightResultsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ data?: string; payload?: string; source?: string; response?: string }>();
   const { airports } = useAirports();
+  const airportList = airports.length > 0 ? airports : airportsData;
 
   const parsedResult = useMemo(() => {
     const rawResult = params.response ?? params.data;
@@ -529,7 +530,7 @@ const originSegment = itinerary.segments[0];
  <View style={styles.routeBlock}>
               <View style={styles.locationColumn}>
                 <Text style={styles.airportCodeLarge}>{originCode}</Text>
-                <Text style={styles.cityLabel}> {getCountryByIATA(airports, originCode)}</Text>
+                <Text style={styles.cityLabel}> {getCountryByIATA(airportList, originCode)}</Text>
               </View>
 
               <View style={styles.connector}>
@@ -547,7 +548,7 @@ const originSegment = itinerary.segments[0];
 
               <View style={[styles.locationColumn, styles.alignEnd]}>
                 <Text style={[styles.airportCodeLarge, styles.alignEnd]}>{destinationCode}</Text>
-                <Text style={[styles.cityLabel, styles.alignEnd]}> {getCountryByIATA(airports, destinationCode)}</Text>
+                <Text style={[styles.cityLabel, styles.alignEnd]}> {getCountryByIATA(airportList, destinationCode)}</Text>
               </View>
             </View>
 
