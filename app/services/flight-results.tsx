@@ -5,7 +5,8 @@ import { Image } from 'expo-image';
 import * as Localization from "expo-localization";
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { BottomSheet } from '@/components/ui/bottom-sheet';
 import IATAAirports from '../../data/IATA_airports.json';
 
 type Airport = {
@@ -15,31 +16,6 @@ type Airport = {
   Location_served: string | null;
   Time: string;
   DST: string | null;
-};
-
-type FlightCard = {
-  id: string;
-  airline: string;
-  airlineCode: string;
-  aircraft: string;
-  cabinClass?: string;
-  passengersLabel?: string;
-  refundable?: boolean;
-  tripLabel?: string;
-  fromCode: string;
-  toCode: string;
-  fromCity: string;
-  toCity: string;
-  departureTime: string;
-  arrivalTime?: string;
-  duration: string;
-  stopsLabel?: string;
-  stopCities?: string;
-  fareNote?: string;
-  airlinesCount?: number;
-  price: string;
-  tagColor: string;
-  flightNumber: string;
 };
 
 type SummaryLeg = {
@@ -133,17 +109,6 @@ const formatCityName = (label?: string | null, code?: string | null) => {
   const primaryPart = cleaned.split(',')[0]?.trim();
 
   return primaryPart || label || code || '';
-};
-
-const getRefundableStatus = (flight: FlightCard) => {
-  if (typeof flight.refundable === 'boolean') return flight.refundable;
-
-  const note = flight.fareNote?.toLowerCase() ?? '';
-
-  if (note.includes('non refund')) return false;
-  if (note.includes('refund')) return true;
-
-  return true;
 };
 
 function FormatDate(dateString: string): string {
@@ -254,102 +219,7 @@ export default function FlightResultsScreen() {
 
   const summaryPrimary = summaryLegs[0];
 
-  const flights: FlightCard[] = (
-    (parsedResult as { flights?: FlightCard[] } | null)?.flights ?? (
-      parsedResult as { data?: FlightCard[] } | null
-    )?.data ??
-    []
-  ).map((flight, index) => ({
-    ...flight,
-    id: flight.id || `${index + 1}`,
-    tagColor: flight.tagColor || '#1e73f6',
-    fromCity: flight.fromCity || defaultFromCity,
-    toCity: flight.toCity || defaultToCity,
-  }));
-
-  const defaultFromCode = summaryPrimary?.fromCode ?? 'SBY';
-  const defaultToCode = summaryPrimary?.toCode ?? 'DPS';
-  const defaultFromCity = summaryPrimary?.fromCity ?? 'Surabaya, East Java';
   const defaultToCity = summaryPrimary?.toCity ?? 'Denpasar, Bali';
-  const defaultDateLabel = summaryPrimary?.dateLabel ?? 'Dec 21, 2023';
-  const defaultTimeLabel = '09:00 AM';
-
-  const mockFlights: FlightCard[] = [
-    {
-      id: '1',
-      airline: 'Garuda Indonesia',
-      airlineCode: 'GA',
-      aircraft: 'A330',
-      cabinClass: 'Economy',
-      passengersLabel: '1 Adult',
-      refundable: true,
-      tripLabel: 'Round trip',
-      fromCode: defaultFromCode,
-      toCode: defaultToCode,
-      fromCity: defaultFromCity,
-      toCity: defaultToCity,
-      departureTime: defaultTimeLabel,
-      arrivalTime: '01:30 PM',
-      duration: '4h30m',
-      stopsLabel: '2 stop overs',
-      stopCities: 'Addis Ababa, Hessen',
-      fareNote: 'Refundable, Penalty Applies',
-      airlinesCount: 2,
-      price: '$320',
-      tagColor: '#1e73f6',
-      flightNumber: 'GA-01',
-    },
-    {
-      id: '2',
-      airline: 'Lion Air',
-      airlineCode: 'JT',
-      aircraft: 'JT-25',
-      cabinClass: 'Economy',
-      passengersLabel: '1 Adult',
-      refundable: false,
-      tripLabel: 'Round trip',
-      fromCode: defaultFromCode,
-      toCode: defaultToCode,
-      fromCity: defaultFromCity,
-      toCity: defaultToCity,
-      departureTime: '12:30 PM',
-      arrivalTime: '04:20 PM',
-      duration: '3h50m',
-      stopsLabel: '1 stop over',
-      stopCities: 'Kuala Lumpur',
-      fareNote: 'Free reschedule within 24h',
-      airlinesCount: 1,
-      price: '$479',
-      tagColor: '#F89A1C',
-      flightNumber: 'JT-25',
-    },
-    {
-      id: '3',
-      airline: 'Citilink',
-      airlineCode: 'QG',
-      aircraft: 'QG-101',
-      cabinClass: 'Economy',
-      passengersLabel: '1 Adult',
-      refundable: true,
-      tripLabel: 'Round trip',
-      fromCode: defaultFromCode,
-      toCode: defaultToCode,
-      fromCity: defaultFromCity,
-      toCity: defaultToCity,
-      departureTime: '05:45 PM',
-      arrivalTime: '09:55 PM',
-      duration: '4h10m',
-      stopsLabel: 'Direct flight',
-      stopCities: 'Non-stop service',
-      fareNote: 'Baggage included',
-      airlinesCount: 1,
-      price: '$289',
-      tagColor: '#3DBE29',
-      flightNumber: 'QG-101',
-    },
-  ];
-
-  const cardsToShow = flights.length > 0 ? flights : mockFlights;
 
   const handleBookNowPress = (flight: any) => {
     setSelectedFlight(flight);
@@ -621,86 +491,75 @@ const originSegment = itinerary.segments[0];
       })}
     </ScrollView>
 
-    <Modal
-      visible={isSheetVisible}
-      transparent
-      animationType="slide"
-      onRequestClose={handleCloseSheet}
-    >
-      <View style={styles.sheetOverlay}>
-        <Pressable style={styles.sheetBackdrop} onPress={handleCloseSheet} />
-        <View style={styles.sheetContainer}>
-          <View style={styles.sheetHandle} />
-          {selectedFlight && (
-            <>
-              <View style={styles.sheetHeader}>
-                <View style={styles.badgeRow}>
-                  <View style={styles.logoCircle}>
-                    <Image
-                      source={`https://images.wakanow.com/Images/flight-logos/${selectedFlight.validatingAirlineCodes?.[0]}.gif`}
-                      style={{ width: "100%", height: "100%" }}
-                      contentFit="cover"
-                    />
-                  </View>
-                  <View>
-                    <Text style={styles.airlineName}>{selectedFlight.validatingAirlineCodes?.[0]}</Text>
-                    <Text style={styles.aircraft}>{selectedFlight.validatingAirlineCodes?.[0]}</Text>
-                  </View>
-                </View>
+    <BottomSheet visible={isSheetVisible} onClose={handleCloseSheet}>
+      {selectedFlight && (
+        <ScrollView contentContainerStyle={styles.sheetContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.sheetHeader}>
+            <View style={styles.badgeRow}>
+              <View style={styles.logoCircle}>
+                <Image
+                  source={`https://images.wakanow.com/Images/flight-logos/${selectedFlight.validatingAirlineCodes?.[0]}.gif`}
+                  style={{ width: "100%", height: "100%" }}
+                  contentFit="cover"
+                />
+              </View>
+              <View>
+                <Text style={styles.airlineName}>{selectedFlight.validatingAirlineCodes?.[0]}</Text>
+                <Text style={styles.aircraft}>{selectedFlight.validatingAirlineCodes?.[0]}</Text>
+              </View>
+            </View>
 
-                <View style={styles.sheetPriceBlock}>
-                  <Text style={styles.sheetPriceLabel}>Estimated fare</Text>
-                  <Text style={styles.sheetPrice}>{formatMoney(Number(selectedPrice ?? 0), "NGN")}</Text>
-                </View>
+            <View style={styles.sheetPriceBlock}>
+              <Text style={styles.sheetPriceLabel}>Estimated fare</Text>
+              <Text style={styles.sheetPrice}>{formatMoney(Number(selectedPrice ?? 0), "NGN")}</Text>
+            </View>
+          </View>
+
+          <View style={styles.sheetRoute}>
+            <View style={styles.sheetRouteRow}>
+              <View style={styles.locationColumn}>
+                <Text style={styles.airportCodeLarge}>{selectedOrigin ?? "---"}</Text>
+                <Text style={styles.cityLabel}>{selectedOriginCity}</Text>
               </View>
 
-              <View style={styles.sheetRoute}>
-                <View style={styles.sheetRouteRow}>
-                  <View style={styles.locationColumn}>
-                    <Text style={styles.airportCodeLarge}>{selectedOrigin ?? "---"}</Text>
-                    <Text style={styles.cityLabel}>{selectedOriginCity}</Text>
+              <View style={styles.connector}>
+                <View style={styles.dash} />
+                <View style={styles.planeIconColumn}>
+                  <View style={styles.planeIconWrapper}>
+                    <Ionicons name="airplane" size={16} color="#0c2047" />
                   </View>
-
-                  <View style={styles.connector}>
-                    <View style={styles.dash} />
-                    <View style={styles.planeIconColumn}>
-                      <View style={styles.planeIconWrapper}>
-                        <Ionicons name="airplane" size={16} color="#0c2047" />
-                      </View>
-                      <Text style={styles.durationLabel}>
-                        {selectedHours > 0 || selectedMinutes > 0
-                          ? `${selectedHours}h ${selectedMinutes}m`
-                          : selectedItinerary?.duration?.replace("PT", "") ?? "--"}
-                      </Text>
-                    </View>
-                    <View style={styles.dash} />
-                  </View>
-
-                  <View style={[styles.locationColumn, styles.alignEnd]}>
-                    <Text style={[styles.airportCodeLarge, styles.alignEnd]}>{selectedDestination ?? "---"}</Text>
-                    <Text style={[styles.cityLabel, styles.alignEnd]}>{selectedDestinationCity}</Text>
-                  </View>
+                  <Text style={styles.durationLabel}>
+                    {selectedHours > 0 || selectedMinutes > 0
+                      ? `${selectedHours}h ${selectedMinutes}m`
+                      : selectedItinerary?.duration?.replace("PT", "") ?? "--"}
+                  </Text>
                 </View>
-
-                <View style={styles.timeRow}>
-                  <Text style={styles.timeText}>{selectedArrival ? FormatDate(selectedArrival) : "--"}</Text>
-                  <Text style={styles.timeText}>{selectedDeparture ? FormatDate(selectedDeparture) : "--"}</Text>
-                </View>
+                <View style={styles.dash} />
               </View>
 
-              <View style={styles.sheetActions}>
-                <Pressable style={styles.sheetSecondaryButton} onPress={handleCloseSheet}>
-                  <Text style={styles.sheetSecondaryText}>Close</Text>
-                </Pressable>
-                <Pressable style={styles.sheetPrimaryButton} onPress={handleCloseSheet}>
-                  <Text style={styles.sheetPrimaryText}>Proceed to book</Text>
-                </Pressable>
+              <View style={[styles.locationColumn, styles.alignEnd]}>
+                <Text style={[styles.airportCodeLarge, styles.alignEnd]}>{selectedDestination ?? "---"}</Text>
+                <Text style={[styles.cityLabel, styles.alignEnd]}>{selectedDestinationCity}</Text>
               </View>
-            </>
-          )}
-        </View>
-      </View>
-    </Modal>
+            </View>
+
+            <View style={styles.timeRow}>
+              <Text style={styles.timeText}>{selectedArrival ? FormatDate(selectedArrival) : "--"}</Text>
+              <Text style={styles.timeText}>{selectedDeparture ? FormatDate(selectedDeparture) : "--"}</Text>
+            </View>
+          </View>
+
+          <View style={styles.sheetActions}>
+            <Pressable style={styles.sheetSecondaryButton} onPress={handleCloseSheet}>
+              <Text style={styles.sheetSecondaryText}>Close</Text>
+            </Pressable>
+            <Pressable style={styles.sheetPrimaryButton} onPress={handleCloseSheet}>
+              <Text style={styles.sheetPrimaryText}>Proceed to book</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      )}
+    </BottomSheet>
     </View>
   );
 }
@@ -1090,27 +949,9 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     alignItems: 'flex-end',
   },
-  sheetOverlay: {
-    flex: 1,
-    backgroundColor: '#00000066',
-    justifyContent: 'flex-end',
-  },
-  sheetBackdrop: {
-    flex: 1,
-  },
-  sheetContainer: {
-    backgroundColor: '#ffffff',
-    padding: 20,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+  sheetContent: {
     gap: 16,
-  },
-  sheetHandle: {
-    width: 50,
-    height: 5,
-    backgroundColor: '#e2e8f4',
-    alignSelf: 'center',
-    borderRadius: 3,
+    paddingBottom: 20,
   },
   sheetHeader: {
     flexDirection: 'row',
