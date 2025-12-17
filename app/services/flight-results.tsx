@@ -494,7 +494,7 @@ export default function FlightResultsScreen() {
 
               <Pressable style={styles.ctaButton}>
                 <Text style={styles.ctaText}>Book now</Text>
-                <Ionicons name="arrow-forward" size={16} color="#0c2047" />
+                <Ionicons name="arrow-forward" size={16} color="#ffffff" />
               </Pressable>
             </View>
 
@@ -941,15 +941,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#e5edff',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
+    backgroundColor: '#1f6feb',
+    borderColor: '#ff9f1c',
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 14,
+    shadowColor: '#0c2047',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
   },
   ctaText: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#0c2047',
+    color: '#ffffff',
     textTransform: 'capitalize',
   },
   stopRow: {
