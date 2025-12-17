@@ -296,11 +296,11 @@ export default function FlightResultsScreen() {
 
       <Text style={styles.sectionLabel}>Result</Text>
 
-      {parsedResult?.flightRights.map((flight) => {
+      {parsedResult?.flightRights.map((flight, flightIndex) => {
         // const isRefundable = getRefundableStatus(flight);
 
         return (
-          <View key={flight.id} style={styles.flightCard}>
+          <View key={flight.id ?? `flight-${flightIndex}`} style={styles.flightCard}>
             <View style={styles.pillRow}>
              
               <View style={styles.pill}>
@@ -402,57 +402,58 @@ export default function FlightResultsScreen() {
               // })
               // .filter((value): value is string => Boolean(value))
               // .join(", ");
-const { hours, minutes } = parseDuration(itinerary.duration);
+                const { hours, minutes } = parseDuration(itinerary.duration);
                 const destinationTime = FormatDate(
-              itinerary.segments[itinerary.segments.length - 1].arrival.at
-            );
-const leg = parsedPayload?.flightSearch?.[idx];
-const originSegment = itinerary.segments[0];
-            const lastSegment =
-              itinerary.segments[itinerary.segments.length - 1];
- const originCode =
-              leg?.originLocationCode ?? originSegment?.departure.iataCode;
-            const destinationCode =
-              leg?.destinationLocationCode ?? lastSegment?.arrival.iataCode;
-            const originTime = FormatDate(itinerary.segments[0].departure.at);
+                  itinerary.segments[itinerary.segments.length - 1].arrival.at
+                );
+                const leg = parsedPayload?.flightSearch?.[idx];
+                const originSegment = itinerary.segments[0];
+                const lastSegment = itinerary.segments[itinerary.segments.length - 1];
+                const originCode =
+                  leg?.originLocationCode ?? originSegment?.departure.iataCode;
+                const destinationCode =
+                  leg?.destinationLocationCode ?? lastSegment?.arrival.iataCode;
+                const originTime = FormatDate(itinerary.segments[0].departure.at);
                 // const { hours, minutes } = parseDuration(itinerary.duration);
                 // const destination_Label = getCountryByIATA(
                 //   airports,
                 //   payload?.flightSearch?.[idx]?.destinationLocationCode
                 // );
                 return (
-<>
- <View style={styles.routeBlock}>
-              <View style={styles.locationColumn}>
-                <Text style={styles.airportCodeLarge}>{originCode}</Text>
-                <Text style={styles.cityLabel}> {getCountryByIATA(airportList, originCode)}</Text>
-              </View>
+                  <View key={itinerary.id ?? `itinerary-${idx}`} style={styles.itinerarySection}>
+                    <View style={styles.routeBlock}>
+                      <View style={styles.locationColumn}>
+                        <Text style={styles.airportCodeLarge}>{originCode}</Text>
+                        <Text style={styles.cityLabel}> {getCountryByIATA(airportList, originCode)}</Text>
+                      </View>
 
-              <View style={styles.connector}>
-                <View style={styles.dash} />
-                <View style={styles.planeIconColumn}>
-                  <View style={styles.planeIconWrapper}>
-                    <Ionicons name="airplane" size={16} color="#0c2047" />
-                  </View>
-                  <Text style={styles.durationLabel}>{hours > 0 || minutes > 0
+                      <View style={styles.connector}>
+                        <View style={styles.dash} />
+                        <View style={styles.planeIconColumn}>
+                          <View style={styles.planeIconWrapper}>
+                            <Ionicons name="airplane" size={16} color="#0c2047" />
+                          </View>
+                          <Text style={styles.durationLabel}>
+                            {hours > 0 || minutes > 0
                               ? `${hours}h ${minutes}m`
-                              : itinerary.duration.replace("PT", "")}</Text>
-                </View>
-                <View style={styles.dash} />
-              </View>
+                              : itinerary.duration.replace("PT", "")}
+                          </Text>
+                        </View>
+                        <View style={styles.dash} />
+                      </View>
 
-              <View style={[styles.locationColumn, styles.alignEnd]}>
-                <Text style={[styles.airportCodeLarge, styles.alignEnd]}>{destinationCode}</Text>
-                <Text style={[styles.cityLabel, styles.alignEnd]}> {getCountryByIATA(airportList, destinationCode)}</Text>
-              </View>
-            </View>
+                      <View style={[styles.locationColumn, styles.alignEnd]}>
+                        <Text style={[styles.airportCodeLarge, styles.alignEnd]}>{destinationCode}</Text>
+                        <Text style={[styles.cityLabel, styles.alignEnd]}> {getCountryByIATA(airportList, destinationCode)}</Text>
+                      </View>
+                    </View>
 
-            <View style={styles.timeRow}>
-              <Text style={styles.timeText}>{destinationTime}</Text>
-              <Text style={styles.timeText}>{originTime}</Text>
-            </View>
-</>
-                   );
+                    <View style={styles.timeRow}>
+                      <Text style={styles.timeText}>{destinationTime}</Text>
+                      <Text style={styles.timeText}>{originTime}</Text>
+                    </View>
+                  </View>
+                );
               })}
 
            
@@ -839,6 +840,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 10,
+  },
+  itinerarySection: {
+    gap: 8,
   },
   connector: {
     flexDirection: 'row',
