@@ -361,6 +361,28 @@ export default function FlightResultsScreen() {
     setSelectedFlight(null);
   };
 
+  const handleBookNowPress = (flight: any) => {
+    setSelectedFlight(flight);
+    setSheetVisible(true);
+  };
+
+  const handleCloseSheet = () => {
+    setSheetVisible(false);
+    setSelectedFlight(null);
+  };
+
+  const selectedItinerary = selectedFlight?.itineraries?.[0];
+  const selectedOrigin = selectedItinerary?.segments?.[0]?.departure?.iataCode;
+  const selectedDestination = selectedItinerary?.segments?.[selectedItinerary?.segments?.length - 1]?.arrival?.iataCode;
+  const selectedOriginCity = selectedOrigin ? getCountryByIATA(airportList, selectedOrigin) : '';
+  const selectedDestinationCity = selectedDestination ? getCountryByIATA(airportList, selectedDestination) : '';
+  const { hours: selectedHours, minutes: selectedMinutes } = selectedItinerary?.duration
+    ? parseDuration(selectedItinerary.duration)
+    : { hours: 0, minutes: 0 };
+  const selectedDeparture = selectedItinerary?.segments?.[0]?.departure?.at;
+  const selectedArrival = selectedItinerary?.segments?.[selectedItinerary?.segments?.length - 1]?.arrival?.at;
+  const selectedPrice = selectedFlight?.price?.grandTotal ?? selectedFlight?.price?.total;
+
 
   return (
     <View style={styles.screen}>
@@ -1003,5 +1025,91 @@ const styles = StyleSheet.create({
   alignEnd: {
     textAlign: 'right',
     alignItems: 'flex-end',
+  },
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: '#00000066',
+    justifyContent: 'flex-end',
+  },
+  sheetBackdrop: {
+    flex: 1,
+  },
+  sheetContainer: {
+    backgroundColor: '#ffffff',
+    padding: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    gap: 16,
+  },
+  sheetHandle: {
+    width: 50,
+    height: 5,
+    backgroundColor: '#e2e8f4',
+    alignSelf: 'center',
+    borderRadius: 3,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sheetPriceBlock: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  sheetPriceLabel: {
+    fontSize: 12,
+    color: '#5c6270',
+    fontWeight: '600',
+  },
+  sheetPrice: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0c2047',
+  },
+  sheetRoute: {
+    gap: 10,
+  },
+  sheetRouteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  sheetActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  sheetSecondaryButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#d6deeb',
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  sheetSecondaryText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0c2047',
+  },
+  sheetPrimaryButton: {
+    flex: 1,
+    backgroundColor: '#1f6feb',
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: 'center',
+    shadowColor: '#0c2047',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  sheetPrimaryText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#ffffff',
   },
 });
