@@ -4,8 +4,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import * as Localization from "expo-localization";
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import IATAAirports from '../../data/IATA_airports.json';
 
 type Airport = {
@@ -174,6 +174,8 @@ export default function FlightResultsScreen() {
   const params = useLocalSearchParams<{ data?: string; payload?: string; source?: string; response?: string }>();
   const { airports } = useAirports();
   const airportList = airports.length > 0 ? airports : airportsData;
+  const [selectedFlight, setSelectedFlight] = useState<any | null>(null);
+  const [isSheetVisible, setSheetVisible] = useState(false);
 
   const parsedResult = useMemo(() => {
     const rawResult = params.response ?? params.data;
@@ -349,8 +351,31 @@ export default function FlightResultsScreen() {
 
   const cardsToShow = flights.length > 0 ? flights : mockFlights;
 
+  const handleBookNowPress = (flight: any) => {
+    setSelectedFlight(flight);
+    setSheetVisible(true);
+  };
+
+  const handleCloseSheet = () => {
+    setSheetVisible(false);
+    setSelectedFlight(null);
+  };
+
+  const selectedItinerary = selectedFlight?.itineraries?.[0];
+  const selectedOrigin = selectedItinerary?.segments?.[0]?.departure?.iataCode;
+  const selectedDestination = selectedItinerary?.segments?.[selectedItinerary?.segments?.length - 1]?.arrival?.iataCode;
+  const selectedOriginCity = selectedOrigin ? getCountryByIATA(airportList, selectedOrigin) : '';
+  const selectedDestinationCity = selectedDestination ? getCountryByIATA(airportList, selectedDestination) : '';
+  const { hours: selectedHours, minutes: selectedMinutes } = selectedItinerary?.duration
+    ? parseDuration(selectedItinerary.duration)
+    : { hours: 0, minutes: 0 };
+  const selectedDeparture = selectedItinerary?.segments?.[0]?.departure?.at;
+  const selectedArrival = selectedItinerary?.segments?.[selectedItinerary?.segments?.length - 1]?.arrival?.at;
+  const selectedPrice = selectedFlight?.price?.grandTotal ?? selectedFlight?.price?.total;
+
 
   return (
+    <View style={styles.screen}>
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.topBar}>
       <View style={styles.topActions}>
@@ -492,7 +517,7 @@ export default function FlightResultsScreen() {
                 </View>
               </View>
 
-              <Pressable style={styles.ctaButton}>
+              <Pressable style={styles.ctaButton} onPress={() => handleBookNowPress(flight)}>
                 <Text style={styles.ctaText}>Book now</Text>
                 <Ionicons name="arrow-forward" size={16} color="#ffffff" />
               </Pressable>
@@ -595,10 +620,96 @@ const originSegment = itinerary.segments[0];
         );
       })}
     </ScrollView>
+
+    <Modal
+      visible={isSheetVisible}
+      transparent
+      animationType="slide"
+      onRequestClose={handleCloseSheet}
+    >
+      <View style={styles.sheetOverlay}>
+        <Pressable style={styles.sheetBackdrop} onPress={handleCloseSheet} />
+        <View style={styles.sheetContainer}>
+          <View style={styles.sheetHandle} />
+          {selectedFlight && (
+            <>
+              <View style={styles.sheetHeader}>
+                <View style={styles.badgeRow}>
+                  <View style={styles.logoCircle}>
+                    <Image
+                      source={`https://images.wakanow.com/Images/flight-logos/${selectedFlight.validatingAirlineCodes?.[0]}.gif`}
+                      style={{ width: "100%", height: "100%" }}
+                      contentFit="cover"
+                    />
+                  </View>
+                  <View>
+                    <Text style={styles.airlineName}>{selectedFlight.validatingAirlineCodes?.[0]}</Text>
+                    <Text style={styles.aircraft}>{selectedFlight.validatingAirlineCodes?.[0]}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.sheetPriceBlock}>
+                  <Text style={styles.sheetPriceLabel}>Estimated fare</Text>
+                  <Text style={styles.sheetPrice}>{formatMoney(Number(selectedPrice ?? 0), "NGN")}</Text>
+                </View>
+              </View>
+
+              <View style={styles.sheetRoute}>
+                <View style={styles.sheetRouteRow}>
+                  <View style={styles.locationColumn}>
+                    <Text style={styles.airportCodeLarge}>{selectedOrigin ?? "---"}</Text>
+                    <Text style={styles.cityLabel}>{selectedOriginCity}</Text>
+                  </View>
+
+                  <View style={styles.connector}>
+                    <View style={styles.dash} />
+                    <View style={styles.planeIconColumn}>
+                      <View style={styles.planeIconWrapper}>
+                        <Ionicons name="airplane" size={16} color="#0c2047" />
+                      </View>
+                      <Text style={styles.durationLabel}>
+                        {selectedHours > 0 || selectedMinutes > 0
+                          ? `${selectedHours}h ${selectedMinutes}m`
+                          : selectedItinerary?.duration?.replace("PT", "") ?? "--"}
+                      </Text>
+                    </View>
+                    <View style={styles.dash} />
+                  </View>
+
+                  <View style={[styles.locationColumn, styles.alignEnd]}>
+                    <Text style={[styles.airportCodeLarge, styles.alignEnd]}>{selectedDestination ?? "---"}</Text>
+                    <Text style={[styles.cityLabel, styles.alignEnd]}>{selectedDestinationCity}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.timeRow}>
+                  <Text style={styles.timeText}>{selectedArrival ? FormatDate(selectedArrival) : "--"}</Text>
+                  <Text style={styles.timeText}>{selectedDeparture ? FormatDate(selectedDeparture) : "--"}</Text>
+                </View>
+              </View>
+
+              <View style={styles.sheetActions}>
+                <Pressable style={styles.sheetSecondaryButton} onPress={handleCloseSheet}>
+                  <Text style={styles.sheetSecondaryText}>Close</Text>
+                </Pressable>
+                <Pressable style={styles.sheetPrimaryButton} onPress={handleCloseSheet}>
+                  <Text style={styles.sheetPrimaryText}>Proceed to book</Text>
+                </Pressable>
+              </View>
+            </>
+          )}
+        </View>
+      </View>
+    </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: '#f5f7fb',
+  },
   container: {
     gap: 14,
     backgroundColor: '#f5f7fb',
@@ -978,5 +1089,91 @@ const styles = StyleSheet.create({
   alignEnd: {
     textAlign: 'right',
     alignItems: 'flex-end',
+  },
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: '#00000066',
+    justifyContent: 'flex-end',
+  },
+  sheetBackdrop: {
+    flex: 1,
+  },
+  sheetContainer: {
+    backgroundColor: '#ffffff',
+    padding: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    gap: 16,
+  },
+  sheetHandle: {
+    width: 50,
+    height: 5,
+    backgroundColor: '#e2e8f4',
+    alignSelf: 'center',
+    borderRadius: 3,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sheetPriceBlock: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  sheetPriceLabel: {
+    fontSize: 12,
+    color: '#5c6270',
+    fontWeight: '600',
+  },
+  sheetPrice: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0c2047',
+  },
+  sheetRoute: {
+    gap: 10,
+  },
+  sheetRouteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  sheetActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  sheetSecondaryButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#d6deeb',
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  sheetSecondaryText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0c2047',
+  },
+  sheetPrimaryButton: {
+    flex: 1,
+    backgroundColor: '#1f6feb',
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: 'center',
+    shadowColor: '#0c2047',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  sheetPrimaryText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#ffffff',
   },
 });
