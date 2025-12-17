@@ -4,7 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import * as Localization from "expo-localization";
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BottomSheet } from '@/components/ui/bottom-sheet';
 import IATAAirports from '../../data/IATA_airports.json';
@@ -221,10 +221,206 @@ export default function FlightResultsScreen() {
 
   const defaultToCity = summaryPrimary?.toCity ?? 'Denpasar, Bali';
 
-  const handleBookNowPress = (flight: any) => {
+  const handleBookNowPress = useCallback((flight: any) => {
     setSelectedFlight(flight);
     setSheetVisible(true);
-  };
+  }, []);
+
+  const flightCards = useMemo(() => {
+    if (!parsedResult?.flightRights) return null;
+
+    return parsedResult.flightRights.map((flight, flightIndex) => (
+      <View key={flight.id ?? `flight-${flightIndex}`} style={styles.flightCard}>
+        <View style={styles.pillRow}>
+         
+          <View style={styles.pill}>
+            <Ionicons name="person-outline" size={14} color="#0c2047" />
+            <Text style={styles.pillText}> 1 Adult</Text>
+          </View>
+{flight.fareRules?.rules?.[1]?.category === "REFUND" ? (
+          <>
+            {flight.fareRules?.rules?.[1]?.notApplicable ? (
+               <View
+            style={[
+              styles.refundBadge,
+               styles.nonRefundableBadge,
+            ]}
+          >
+            <Text
+              style={[
+                styles.refundBadgeText,
+                styles.nonRefundableBadgeText,
+              ]}
+            >
+               (Non Refundable)
+            </Text>
+          </View>
+ 
+            ) : (
+               <View
+            style={[
+              styles.refundBadge,
+              styles.refundableBadge,
+            ]}
+          >
+            <Text
+              style={[
+                styles.refundBadgeText,
+                styles.refundableBadgeText,
+              ]}
+            >
+              (Refundable, Penalty Applies)
+            </Text>
+          </View>
+      
+            )}
+          </>
+        ) : (
+           <View
+            style={[
+              styles.refundBadge,
+               styles.nonRefundableBadge,
+            ]}
+          >
+            <Text
+              style={[
+                styles.refundBadgeText,
+                styles.nonRefundableBadgeText,
+              ]}
+            >
+               (Non Refundable)
+            </Text>
+          </View>
+     
+        )}
+
+         
+          
+        </View>
+
+        <View style={styles.tripMetaRow}>
+
+
+        </View>
+
+        <View style={styles.cardHeader}>
+          <View style={styles.badgeRow}>
+            <View style={styles.logoCircle}>
+             
+               <Image source={`https://images.wakanow.com/Images/flight-logos/${flight.validatingAirlineCodes?.[0]}.gif`} 
+               style={{ width: "100%", height: "100%" }} 
+               contentFit="cover" />
+            </View>
+            <View>
+              <Text style={styles.airlineName}>{flight.validatingAirlineCodes?.[0]}</Text>
+              <Text style={styles.aircraft}>{flight.validatingAirlineCodes?.[0]}</Text>
+            </View>
+          </View>
+
+          <Pressable style={styles.ctaButton} onPress={() => handleBookNowPress(flight)}>
+            <Text style={styles.ctaText}>Book now</Text>
+            <Ionicons name="arrow-forward" size={16} color="#ffffff" />
+          </Pressable>
+        </View>
+
+           {flight?.itineraries.map((itinerary, idx) => {
+          //    const stopovers = itinerary.segments
+          // .map((segment, idx) => {
+          //   if (idx !== 0) {
+          //     return getCountryByIATA(airports, segment.departure.iataCode);
+          //   }
+          // })
+          // .filter((value): value is string => Boolean(value))
+          // .join(", ");
+            const { hours, minutes } = parseDuration(itinerary.duration);
+            const destinationTime = FormatDate(
+              itinerary.segments[itinerary.segments.length - 1].arrival.at
+            );
+            const leg = parsedPayload?.flightSearch?.[idx];
+            const originSegment = itinerary.segments[0];
+            const lastSegment = itinerary.segments[itinerary.segments.length - 1];
+            const originCode =
+              leg?.originLocationCode ?? originSegment?.departure.iataCode;
+            const destinationCode =
+              leg?.destinationLocationCode ?? lastSegment?.arrival.iataCode;
+            const originTime = FormatDate(itinerary.segments[0].departure.at);
+            // const { hours, minutes } = parseDuration(itinerary.duration);
+            // const destination_Label = getCountryByIATA(
+            //   airports,
+            //   payload?.flightSearch?.[idx]?.destinationLocationCode
+            // );
+            return (
+              <View key={itinerary.id ?? `itinerary-${idx}`} style={styles.itinerarySection}>
+                <View style={styles.routeBlock}>
+                  <View style={styles.locationColumn}>
+                    <Text style={styles.airportCodeLarge}>{originCode}</Text>
+                    <Text style={styles.cityLabel}> {getCountryByIATA(airportList, originCode)}</Text>
+                  </View>
+
+                  <View style={styles.connector}>
+                    <View style={styles.dash} />
+                    <View style={styles.planeIconColumn}>
+                      <View style={styles.planeIconWrapper}>
+                        <Ionicons name="airplane" size={16} color="#0c2047" />
+                      </View>
+                      <Text style={styles.durationLabel}>
+                        {hours > 0 || minutes > 0
+                          ? `${hours}h ${minutes}m`
+                          : itinerary.duration.replace("PT", "")}
+                      </Text>
+                    </View>
+                    <View style={styles.dash} />
+                  </View>
+
+                  <View style={[styles.locationColumn, styles.alignEnd]}>
+                    <Text style={[styles.airportCodeLarge, styles.alignEnd]}>{destinationCode}</Text>
+                    <Text style={[styles.cityLabel, styles.alignEnd]}> {getCountryByIATA(airportList, destinationCode)}</Text>
+                  </View>
+                </View>
+
+
+                <View style={styles.timeRow}>
+                  <Text style={styles.timeText}>{destinationTime}</Text>
+                  <Text style={styles.timeText}>{originTime}</Text>
+                </View>
+              </View>
+            );
+          })}
+
+       
+
+        <View style={styles.detailRow}>
+          <View style={styles.pill}>
+            <Ionicons name="flag-outline" size={14} color="#0c2047" />
+            <Text style={styles.pillText}>
+              To {formatCityName(getCityLabelFromCode(parsedPayload?.flightSearch?.[0]?.destinationLocationCode   ), parsedPayload?.flightSearch?.[0]?.destinationLocationCode) || flight.toCity || defaultToCity}
+            </Text>
+          </View>
+          <View style={styles.metaPill}>
+            <Ionicons name="briefcase-outline" size={14} color="#0c2047" />
+            <Text style={styles.metaText}>{parsedPayload?.passenger?.travelClass}</Text>
+          </View>
+          <View style={styles.metaPill}>
+            <Ionicons name="swap-horizontal" size={14} color="#0c2047" />
+            <Text style={styles.metaText}>{(flight?.itineraries[0].segments.length - 1) === 0 ? 'Direct flight' : (flight?.itineraries[0].segments.length - 1) === 2? "2 stop over" :"1 stop overs"}  </Text>
+          </View>
+        </View>
+
+        <View style={styles.bottomRow}>
+          <View style={styles.stopRow}>
+            <Ionicons name="pin-outline" size={14} color="#5c6270" />
+            <Text style={styles.stopText}>Non-stop service</Text>
+          </View>
+
+          <View style={[styles.priceBlock, styles.priceFooter]}>
+            <Text style={styles.price}>{formatMoney(Number(flight?.price.grandTotal ?? flight?.price.total),"NGN")}</Text>
+          </View>
+        </View>
+
+
+      </View>
+    ));
+  }, [airportList, defaultToCity, handleBookNowPress, parsedPayload, parsedResult?.flightRights]);
 
   const handleCloseSheet = () => {
     setSheetVisible(false);
@@ -296,200 +492,7 @@ export default function FlightResultsScreen() {
 
       <Text style={styles.sectionLabel}>Result</Text>
 
-      {parsedResult?.flightRights.map((flight, flightIndex) => {
-        // const isRefundable = getRefundableStatus(flight);
-
-        return (
-          <View key={flight.id ?? `flight-${flightIndex}`} style={styles.flightCard}>
-            <View style={styles.pillRow}>
-             
-              <View style={styles.pill}>
-                <Ionicons name="person-outline" size={14} color="#0c2047" />
-                <Text style={styles.pillText}> 1 Adult</Text>
-              </View>
- {flight.fareRules?.rules?.[1]?.category === "REFUND" ? (
-              <>
-                {flight.fareRules?.rules?.[1]?.notApplicable ? (
-                   <View
-                style={[
-                  styles.refundBadge,
-                   styles.nonRefundableBadge,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.refundBadgeText,
-                    styles.nonRefundableBadgeText,
-                  ]}
-                >
-                   (Non Refundable)
-                </Text>
-              </View>
-     
-                ) : (
-                   <View
-                style={[
-                  styles.refundBadge,
-                  styles.refundableBadge,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.refundBadgeText,
-                    styles.refundableBadgeText,
-                  ]}
-                >
-                  (Refundable, Penalty Applies)
-                </Text>
-              </View>
-          
-                )}
-              </>
-            ) : (
-               <View
-                style={[
-                  styles.refundBadge,
-                   styles.nonRefundableBadge,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.refundBadgeText,
-                    styles.nonRefundableBadgeText,
-                  ]}
-                >
-                   (Non Refundable)
-                </Text>
-              </View>
-         
-            )}
-
-             
-              
-            </View>
-
-            <View style={styles.tripMetaRow}>
-
-
-            </View>
-
-            <View style={styles.cardHeader}>
-              <View style={styles.badgeRow}>
-                <View style={styles.logoCircle}>
-                 
-                   <Image source={`https://images.wakanow.com/Images/flight-logos/${flight.validatingAirlineCodes?.[0]}.gif`} 
-                   style={{ width: "100%", height: "100%" }} 
-                   contentFit="cover" />
-                </View>
-                <View>
-                  <Text style={styles.airlineName}>{flight.validatingAirlineCodes?.[0]}</Text>
-                  <Text style={styles.aircraft}>{flight.validatingAirlineCodes?.[0]}</Text>
-                </View>
-              </View>
-
-              <Pressable style={styles.ctaButton} onPress={() => handleBookNowPress(flight)}>
-                <Text style={styles.ctaText}>Book now</Text>
-                <Ionicons name="arrow-forward" size={16} color="#ffffff" />
-              </Pressable>
-            </View>
-
-               {flight?.itineraries.map((itinerary, idx) => {
-              //    const stopovers = itinerary.segments
-              // .map((segment, idx) => {
-              //   if (idx !== 0) {
-              //     return getCountryByIATA(airports, segment.departure.iataCode);
-              //   }
-              // })
-              // .filter((value): value is string => Boolean(value))
-              // .join(", ");
-                const { hours, minutes } = parseDuration(itinerary.duration);
-                const destinationTime = FormatDate(
-                  itinerary.segments[itinerary.segments.length - 1].arrival.at
-                );
-                const leg = parsedPayload?.flightSearch?.[idx];
-                const originSegment = itinerary.segments[0];
-                const lastSegment = itinerary.segments[itinerary.segments.length - 1];
-                const originCode =
-                  leg?.originLocationCode ?? originSegment?.departure.iataCode;
-                const destinationCode =
-                  leg?.destinationLocationCode ?? lastSegment?.arrival.iataCode;
-                const originTime = FormatDate(itinerary.segments[0].departure.at);
-                // const { hours, minutes } = parseDuration(itinerary.duration);
-                // const destination_Label = getCountryByIATA(
-                //   airports,
-                //   payload?.flightSearch?.[idx]?.destinationLocationCode
-                // );
-                return (
-                  <View key={itinerary.id ?? `itinerary-${idx}`} style={styles.itinerarySection}>
-                    <View style={styles.routeBlock}>
-                      <View style={styles.locationColumn}>
-                        <Text style={styles.airportCodeLarge}>{originCode}</Text>
-                        <Text style={styles.cityLabel}> {getCountryByIATA(airportList, originCode)}</Text>
-                      </View>
-
-                      <View style={styles.connector}>
-                        <View style={styles.dash} />
-                        <View style={styles.planeIconColumn}>
-                          <View style={styles.planeIconWrapper}>
-                            <Ionicons name="airplane" size={16} color="#0c2047" />
-                          </View>
-                          <Text style={styles.durationLabel}>
-                            {hours > 0 || minutes > 0
-                              ? `${hours}h ${minutes}m`
-                              : itinerary.duration.replace("PT", "")}
-                          </Text>
-                        </View>
-                        <View style={styles.dash} />
-                      </View>
-
-                      <View style={[styles.locationColumn, styles.alignEnd]}>
-                        <Text style={[styles.airportCodeLarge, styles.alignEnd]}>{destinationCode}</Text>
-                        <Text style={[styles.cityLabel, styles.alignEnd]}> {getCountryByIATA(airportList, destinationCode)}</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.timeRow}>
-                      <Text style={styles.timeText}>{destinationTime}</Text>
-                      <Text style={styles.timeText}>{originTime}</Text>
-                    </View>
-                  </View>
-                );
-              })}
-
-           
-
-            <View style={styles.detailRow}>
-              <View style={styles.pill}>
-                <Ionicons name="flag-outline" size={14} color="#0c2047" />
-                <Text style={styles.pillText}>
-                  To {formatCityName(getCityLabelFromCode(parsedPayload?.flightSearch?.[0]?.destinationLocationCode   ), parsedPayload?.flightSearch?.[0]?.destinationLocationCode) || flight.toCity || defaultToCity}
-                </Text>
-              </View>
-              <View style={styles.metaPill}>
-                <Ionicons name="briefcase-outline" size={14} color="#0c2047" />
-                <Text style={styles.metaText}>{parsedPayload?.passenger?.travelClass}</Text>
-              </View>
-              <View style={styles.metaPill}>
-                <Ionicons name="swap-horizontal" size={14} color="#0c2047" />
-                <Text style={styles.metaText}>{(flight?.itineraries[0].segments.length - 1) === 0 ? 'Direct flight' : (flight?.itineraries[0].segments.length - 1) === 2? "2 stop over" :"1 stop overs"}  </Text>
-              </View>
-            </View>
-
-            <View style={styles.bottomRow}>
-              <View style={styles.stopRow}>
-                <Ionicons name="pin-outline" size={14} color="#5c6270" />
-                <Text style={styles.stopText}>Non-stop service</Text>
-              </View>
-
-              <View style={[styles.priceBlock, styles.priceFooter]}>
-                <Text style={styles.price}>{formatMoney(Number(flight?.price.grandTotal ?? flight?.price.total),"NGN")}</Text>
-              </View>
-            </View>
-
-
-          </View>
-        );
-      })}
+      {flightCards}
     </ScrollView>
 
     <BottomSheet visible={isSheetVisible} onClose={handleCloseSheet}>
