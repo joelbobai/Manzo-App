@@ -1,5 +1,6 @@
 import { useAirports } from "@/hooks/useAirports";
-import { getCountryByIATA } from "@/utils/getCountryByIATA";
+import { getAirportLocation, getCountryByIATA } from "@/utils/getCountryByIATA";
+import type { FlightOffer, FlightSegment, TravelerPricingDetail } from "@/types/flight";
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import * as Localization from "expo-localization";
@@ -133,13 +134,102 @@ function FormatDate(dateString: string): string {
   return `${time} ${day} ${dayNum} ${month}`.toUpperCase();
 }
 
+const formatTime = (value?: string | null) => {
+  if (!value) return "--";
+
+  const date = new Date(value);
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+};
+
+const formatDateLabel = (value?: string | null) => {
+  if (!value) return "--";
+
+  const date = new Date(value);
+  return date.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+};
+
+const formatDurationLabel = (duration?: string | null) => {
+  if (!duration) return "--";
+
+  const { hours, minutes } = parseDuration(duration);
+
+  if (!hours && !minutes) return duration.replace("PT", "");
+
+  return `${hours ? `${hours}h ` : ""}${minutes ? `${minutes}m` : ""}`.trim();
+};
+
+const getLayoverDuration = (from?: string, to?: string) => {
+  if (!from || !to) return null;
+
+  const start = new Date(from).getTime();
+  const end = new Date(to).getTime();
+
+  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) return null;
+
+  const diffMinutes = Math.round((end - start) / 60000);
+  const hours = Math.floor(diffMinutes / 60);
+  const minutes = diffMinutes % 60;
+
+  return { hours, minutes };
+};
+
+const formatItineraryStopLabel = (segments: FlightSegment[]) => {
+  const stopCount = Math.max(segments.length - 1, 0);
+
+  if (stopCount === 0) return "Non-stop";
+  if (stopCount === 1) return "1 stop";
+  return `${stopCount} stops`;
+};
+
+const formatBaggageLabel = (detail?: TravelerPricingDetail | null) => {
+  if (!detail) return null;
+
+  const checkedQuantity = detail.includedCheckedBags?.quantity;
+  const checkedWeight = detail.includedCheckedBags?.weight;
+  const checkedWeightUnit = detail.includedCheckedBags?.weightUnit ?? "KG";
+
+  if (checkedQuantity !== undefined && checkedWeight !== undefined) {
+    return `${checkedQuantity} x ${checkedWeight}${checkedWeightUnit}`;
+  }
+
+  if (checkedQuantity !== undefined) {
+    return `${checkedQuantity} bag${checkedQuantity === 1 ? "" : "s"}`;
+  }
+
+  if (checkedWeight !== undefined) {
+    return `${checkedWeight}${checkedWeightUnit}`;
+  }
+
+  return null;
+};
+
+const getCarrierName = (
+  segment: FlightSegment,
+  carriers?: Record<string, string>
+) => {
+  if (segment.operating?.carrierName) return segment.operating.carrierName;
+  if (segment.operating?.carrierCode && carriers?.[segment.operating.carrierCode]) {
+    return carriers[segment.operating.carrierCode];
+  }
+  if (carriers?.[segment.carrierCode]) return carriers[segment.carrierCode];
+  return null;
+};
+
 
 export default function FlightResultsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ data?: string; payload?: string; source?: string; response?: string }>();
   const { airports } = useAirports();
   const airportList = airports.length > 0 ? airports : airportsData;
-  const [selectedFlight, setSelectedFlight] = useState<any | null>(null);
+  const [selectedFlight, setSelectedFlight] = useState<FlightOffer | null>(null);
   const [isSheetVisible, setSheetVisible] = useState(false);
 
   const parsedResult = useMemo(() => {
@@ -154,6 +244,8 @@ export default function FlightResultsScreen() {
       return null;
     }
   }, [params.data, params.response]);
+
+  const dictionaries = parsedResult?.flightRightsDictionaries ?? parsedResult?.dictionaries;
 
   const parsedPayload = useMemo(() => {
     if (!params.payload) return null;
@@ -438,6 +530,20 @@ export default function FlightResultsScreen() {
   const selectedDeparture = selectedItinerary?.segments?.[0]?.departure?.at;
   const selectedArrival = selectedItinerary?.segments?.[selectedItinerary?.segments?.length - 1]?.arrival?.at;
   const selectedPrice = selectedFlight?.price?.grandTotal ?? selectedFlight?.price?.total;
+  const selectedCabin = selectedFlight?.travelerPricings?.[0]?.fareDetailsBySegment?.[0]?.cabin ?? parsedPayload?.passenger?.travelClass;
+  const segmentDetailsMap = useMemo(() => {
+    const detailMap = new Map<string, TravelerPricingDetail>();
+
+    selectedFlight?.travelerPricings?.forEach((pricing) => {
+      pricing.fareDetailsBySegment?.forEach((detail) => {
+        if (detail.segmentId) {
+          detailMap.set(detail.segmentId.toString(), detail);
+        }
+      });
+    });
+
+    return detailMap;
+  }, [selectedFlight]);
 
 
   return (
@@ -519,39 +625,225 @@ export default function FlightResultsScreen() {
             </View>
           </View>
 
-          <View style={styles.sheetRoute}>
-            <View style={styles.sheetRouteRow}>
-              <View style={styles.locationColumn}>
-                <Text style={styles.airportCodeLarge}>{selectedOrigin ?? "---"}</Text>
-                <Text style={styles.cityLabel}>{selectedOriginCity}</Text>
-              </View>
-
-              <View style={styles.connector}>
-                <View style={styles.dash} />
-                <View style={styles.planeIconColumn}>
-                  <View style={styles.planeIconWrapper}>
-                    <Ionicons name="airplane" size={16} color="#0c2047" />
-                  </View>
-                  <Text style={styles.durationLabel}>
-                    {selectedHours > 0 || selectedMinutes > 0
-                      ? `${selectedHours}h ${selectedMinutes}m`
-                      : selectedItinerary?.duration?.replace("PT", "") ?? "--"}
-                  </Text>
+            <View style={styles.sheetRoute}>
+              <View style={styles.sheetRouteRow}>
+                <View style={styles.locationColumn}>
+                  <Text style={styles.airportCodeLarge}>{selectedOrigin ?? "---"}</Text>
+                  <Text style={styles.cityLabel}>{selectedOriginCity}</Text>
                 </View>
-                <View style={styles.dash} />
+
+                <View style={styles.connector}>
+                  <View style={styles.dash} />
+                  <View style={styles.planeIconColumn}>
+                    <View style={styles.planeIconWrapper}>
+                      <Ionicons name="airplane" size={16} color="#0c2047" />
+                    </View>
+                    <Text style={styles.durationLabel}>
+                      {selectedHours > 0 || selectedMinutes > 0
+                        ? `${selectedHours}h ${selectedMinutes}m`
+                        : selectedItinerary?.duration?.replace("PT", "") ?? "--"}
+                    </Text>
+                  </View>
+                  <View style={styles.dash} />
+                </View>
+
+                <View style={[styles.locationColumn, styles.alignEnd]}>
+                  <Text style={[styles.airportCodeLarge, styles.alignEnd]}>{selectedDestination ?? "---"}</Text>
+                  <Text style={[styles.cityLabel, styles.alignEnd]}>{selectedDestinationCity}</Text>
+                </View>
               </View>
 
-              <View style={[styles.locationColumn, styles.alignEnd]}>
-                <Text style={[styles.airportCodeLarge, styles.alignEnd]}>{selectedDestination ?? "---"}</Text>
-                <Text style={[styles.cityLabel, styles.alignEnd]}>{selectedDestinationCity}</Text>
+              <View style={styles.timeRow}>
+                <Text style={styles.timeText}>{selectedDeparture ? FormatDate(selectedDeparture) : "--"}</Text>
+                <Text style={styles.timeText}>{selectedArrival ? FormatDate(selectedArrival) : "--"}</Text>
               </View>
             </View>
 
-            <View style={styles.timeRow}>
-              <Text style={styles.timeText}>{selectedArrival ? FormatDate(selectedArrival) : "--"}</Text>
-              <Text style={styles.timeText}>{selectedDeparture ? FormatDate(selectedDeparture) : "--"}</Text>
+          <View style={styles.sheetMetaRow}>
+            <View style={styles.metaPill}>
+              <Ionicons name="people" size={14} color="#0c2047" />
+              <Text style={styles.metaText}>{parsedPayload?.passenger?.adults ?? 1} Adult</Text>
+            </View>
+            <View style={styles.metaPill}>
+              <Ionicons name="briefcase-outline" size={14} color="#0c2047" />
+              <Text style={styles.metaText}>{selectedCabin ?? ""}</Text>
+            </View>
+            <View style={styles.metaPill}>
+              <Ionicons name="pricetag-outline" size={14} color="#0c2047" />
+              <Text style={styles.metaText}>Seats left: {selectedFlight?.numberOfBookableSeats ?? "--"}</Text>
             </View>
           </View>
+
+          <View style={styles.sheetSectionHeader}>
+            <Text style={styles.sheetSectionTitle}>Flight details</Text>
+            <Text style={styles.sheetSectionSub}>{selectedFlight?.itineraries?.length ?? 0} leg(s)</Text>
+          </View>
+
+          {selectedFlight?.itineraries?.map((itinerary, itineraryIndex) => {
+            const segments = itinerary.segments ?? [];
+            const { hours, minutes } = parseDuration(itinerary.duration);
+            const legLabel = itineraryIndex === 0 ? "Departure" : itineraryIndex === 1 ? "Return" : `Leg ${itineraryIndex + 1}`;
+            const firstSegment = segments[0];
+            const lastSegment = segments[segments.length - 1];
+            const departureCode = firstSegment?.departure?.iataCode;
+            const arrivalCode = lastSegment?.arrival?.iataCode;
+            const departureLabel = getAirportLocation(airportList, departureCode) ?? departureCode ?? "";
+            const arrivalLabel = getAirportLocation(airportList, arrivalCode) ?? arrivalCode ?? "";
+            const stopLabel = formatItineraryStopLabel(segments ?? []);
+            const itineraryDurationLabel = hours || minutes ? `${hours ? `${hours}h ` : ''}${minutes ? `${minutes}m` : ''}`.trim() : itinerary.duration.replace("PT", "");
+
+            return (
+              <View key={itinerary.id ?? `itinerary-${itineraryIndex}`} style={styles.itineraryCard}>
+                <View style={styles.itineraryHeader}>
+                  <View style={styles.itineraryHeaderText}>
+                    <Text style={styles.itineraryTitle}>{departureLabel} → {arrivalLabel}</Text>
+                    <View style={styles.itinerarySubRow}>
+                      <Text style={styles.itinerarySub}>{departureCode}</Text>
+                      <Text style={styles.itinerarySubSeparator}>•</Text>
+                      <Text style={styles.itinerarySub}>{arrivalCode}</Text>
+                    </View>
+                    <View style={styles.itineraryMetaRow}>
+                      <View style={styles.itineraryMetaChip}>
+                        <Ionicons name="calendar-outline" size={14} color="#0c2047" />
+                        <Text style={styles.itineraryMetaText}>{firstSegment?.departure?.at ? formatDateLabel(firstSegment.departure.at) : "--"}</Text>
+                      </View>
+                      <View style={styles.itineraryMetaChip}>
+                        <Ionicons name="time-outline" size={14} color="#0c2047" />
+                        <Text style={styles.itineraryMetaText}>{itineraryDurationLabel}</Text>
+                      </View>
+                      <View style={styles.itineraryMetaChip}>
+                        <Ionicons name="swap-horizontal" size={14} color="#0c2047" />
+                        <Text style={styles.itineraryMetaText}>{stopLabel}</Text>
+                      </View>
+                    </View>
+                  </View>
+                  <View style={styles.itineraryBadge}>
+                    <Text style={styles.itineraryBadgeText}>{legLabel}</Text>
+                    <Text style={styles.itineraryBadgeSub}>Itinerary {itineraryIndex + 1}</Text>
+                  </View>
+                </View>
+
+                {segments.map((segment: FlightSegment, segmentIndex: number) => {
+                  const segmentDetail = segmentDetailsMap.get(segment.id?.toString?.() ?? segment.id);
+                  const departureLabel = getCountryByIATA(airportList, segment.departure.iataCode);
+                  const arrivalLabel = getCountryByIATA(airportList, segment.arrival.iataCode);
+                  const layover = segments[segmentIndex + 1]
+                    ? getLayoverDuration(segment.arrival.at, segments[segmentIndex + 1].departure.at)
+                    : null;
+                  const baggageLabel = formatBaggageLabel(segmentDetail);
+                  const carrierName = getCarrierName(segment, dictionaries?.carriers);
+
+                  return (
+                    <View key={segment.id ?? `segment-${segmentIndex}`} style={styles.segmentCard}>
+                      <View style={styles.segmentRow}>
+                        <View style={styles.segmentBlock}>
+                          <Text style={styles.segmentTime}>{formatTime(segment.departure.at)}</Text>
+                          <Text style={styles.segmentDate}>{formatDateLabel(segment.departure.at)}</Text>
+                          <Text style={styles.segmentAirport}>{segment.departure.iataCode} • {departureLabel}</Text>
+                          {segment.departure.terminal && (
+                            <Text style={styles.segmentTerminal}>Terminal {segment.departure.terminal}</Text>
+                          )}
+                        </View>
+
+                        <View style={styles.segmentCenter}>
+                          <View style={styles.segmentDash} />
+                          <Ionicons name="airplane" size={16} color="#0c2047" />
+                          <View style={styles.segmentDash} />
+                          <Text style={styles.segmentDuration}>{formatDurationLabel(segment.duration)}</Text>
+                        </View>
+
+                        <View style={[styles.segmentBlock, styles.alignEnd]}>
+                          <Text style={styles.segmentTime}>{formatTime(segment.arrival.at)}</Text>
+                          <Text style={styles.segmentDate}>{formatDateLabel(segment.arrival.at)}</Text>
+                          <Text style={[styles.segmentAirport, styles.alignEnd]}>{segment.arrival.iataCode} • {arrivalLabel}</Text>
+                          {segment.arrival.terminal && (
+                            <Text style={[styles.segmentTerminal, styles.alignEnd]}>Terminal {segment.arrival.terminal}</Text>
+                          )}
+                        </View>
+                      </View>
+
+                        <View style={styles.segmentMetaRow}>
+                        <View style={styles.segmentMetaChip}>
+                          <Ionicons name="airplane-outline" size={14} color="#0c2047" />
+                          <Text style={styles.segmentMetaText}>Flight {segment.carrierCode}{segment.number}</Text>
+                        </View>
+                        {carrierName ? (
+                          <View style={styles.segmentMetaChip}>
+                            <Ionicons name="business-outline" size={14} color="#0c2047" />
+                            <Text style={styles.segmentMetaText}>{carrierName}</Text>
+                          </View>
+                        ) : null}
+                        {segment.operating?.carrierCode || segment.operating?.carrierName ? (
+                          <View style={styles.segmentMetaChip}>
+                            <Ionicons name="information-circle-outline" size={14} color="#0c2047" />
+                            <Text style={styles.segmentMetaText}>
+                              Operated by {segment.operating?.carrierName ?? segment.operating?.carrierCode}
+                            </Text>
+                          </View>
+                        ) : null}
+                        {segmentDetail?.cabin && (
+                          <View style={styles.segmentMetaChip}>
+                            <Ionicons name="briefcase-outline" size={14} color="#0c2047" />
+                            <Text style={styles.segmentMetaText}>Cabin {segmentDetail.cabin}</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      <View style={styles.segmentMetaRow}>
+                        {segment.aircraft?.code && (
+                          <View style={styles.segmentMetaChip}>
+                            <Ionicons name="airplane-outline" size={14} color="#0c2047" />
+                            <Text style={styles.segmentMetaText}>Aircraft {segment.aircraft.code}</Text>
+                          </View>
+                        )}
+                        {segmentDetail?.includedCheckedBags?.quantity !== undefined && (
+                          <View style={styles.segmentMetaChip}>
+                            <Ionicons name="cube-outline" size={14} color="#0c2047" />
+                            <Text style={styles.segmentMetaText}>{segmentDetail.includedCheckedBags.quantity} checked bag(s)</Text>
+                          </View>
+                        )}
+                        {segmentDetail?.includedCabinBags?.quantity !== undefined && (
+                          <View style={styles.segmentMetaChip}>
+                            <Ionicons name="bag-outline" size={14} color="#0c2047" />
+                            <Text style={styles.segmentMetaText}>{segmentDetail.includedCabinBags.quantity} cabin bag</Text>
+                          </View>
+                        )}
+                        {baggageLabel && (
+                          <View style={styles.segmentMetaChip}>
+                            <Ionicons name="checkbox-outline" size={14} color="#0c2047" />
+                            <Text style={styles.segmentMetaText}>Checked bags {baggageLabel}</Text>
+                          </View>
+                        )}
+                        {segmentDetail?.includedCheckedBags?.weight && (
+                          <View style={styles.segmentMetaChip}>
+                            <Ionicons name="barbell-outline" size={14} color="#0c2047" />
+                            <Text style={styles.segmentMetaText}>
+                              {segmentDetail.includedCheckedBags.weight}{segmentDetail.includedCheckedBags.weightUnit ?? "KG"} weight allowance
+                            </Text>
+                          </View>
+                        )}
+                        {typeof segment.numberOfStops === "number" && segment.numberOfStops > 0 && (
+                          <View style={styles.segmentMetaChip}>
+                            <Ionicons name="stopwatch-outline" size={14} color="#0c2047" />
+                            <Text style={styles.segmentMetaText}>{segment.numberOfStops} technical stop{segment.numberOfStops > 1 ? 's' : ''}</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {layover && (
+                        <View style={styles.layoverRow}>
+                          <Ionicons name="time" size={14} color="#5c6270" />
+                          <Text style={styles.layoverText}>
+                            Layover in {arrivalLabel} ({segment.arrival.iataCode}) • {layover.hours}h {layover.minutes}m
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            );
+          })}
 
           <View style={styles.sheetActions}>
             <Pressable style={styles.sheetSecondaryButton} onPress={handleCloseSheet}>
@@ -987,6 +1279,200 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 10,
+  },
+  sheetMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  sheetSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  sheetSectionTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0c2047',
+  },
+  sheetSectionSub: {
+    fontSize: 12,
+    color: '#5c6270',
+    fontWeight: '600',
+  },
+  itineraryCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 16,
+    padding: 12,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#e4eaf5',
+  },
+  itineraryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  itineraryHeaderText: {
+    flex: 1,
+    gap: 4,
+  },
+  itineraryTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0c2047',
+  },
+  itinerarySubRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  itinerarySubSeparator: {
+    color: '#5c6270',
+    fontWeight: '800',
+  },
+  itinerarySub: {
+    fontSize: 12,
+    color: '#5c6270',
+    marginTop: 2,
+  },
+  itineraryMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  itineraryMetaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#eef3fb',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  itineraryMetaText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0c2047',
+  },
+  itineraryBadge: {
+    alignItems: 'flex-end',
+    backgroundColor: '#fff4e8',
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#fcd9b6',
+    minWidth: 110,
+    gap: 2,
+  },
+  itineraryBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#d06000',
+  },
+  itineraryBadgeSub: {
+    fontSize: 11,
+    color: '#b14f00',
+    fontWeight: '700',
+  },
+  itineraryDurationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  itineraryDurationText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0c2047',
+  },
+  segmentCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    padding: 12,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#e7ecf5',
+  },
+  segmentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  segmentBlock: {
+    flex: 1,
+    gap: 2,
+  },
+  segmentTime: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0c2047',
+  },
+  segmentDate: {
+    fontSize: 12,
+    color: '#5c6270',
+  },
+  segmentAirport: {
+    fontSize: 12,
+    color: '#0c2047',
+    fontWeight: '700',
+  },
+  segmentTerminal: {
+    fontSize: 12,
+    color: '#5c6270',
+  },
+  segmentCenter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  segmentDash: {
+    width: 28,
+    height: 1,
+    borderStyle: 'dashed',
+    borderWidth: 1,
+    borderColor: '#d6deeb',
+  },
+  segmentDuration: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0c2047',
+  },
+  segmentMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  segmentMetaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#f2f6fd',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  segmentMetaText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0c2047',
+  },
+  layoverRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 4,
+  },
+  layoverText: {
+    fontSize: 12,
+    color: '#5c6270',
+    fontWeight: '600',
   },
   sheetActions: {
     flexDirection: 'row',
