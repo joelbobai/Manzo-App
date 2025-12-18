@@ -80,12 +80,14 @@ export function BottomSheet({ visible, onClose, children }: BottomSheetProps) {
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
 
-      <GestureDetector gesture={gesture}>
-        <Animated.View style={[styles.container, sheetStyle]}>
-          <View style={styles.handle} />
-          <View style={styles.content}>{children}</View>
-        </Animated.View>
-      </GestureDetector>
+      <Animated.View style={[styles.container, sheetStyle]}>
+        <GestureDetector gesture={gesture}>
+          <View style={styles.handleContainer}>
+            <View style={styles.handle} />
+          </View>
+        </GestureDetector>
+        <View style={styles.content}>{children}</View>
+      </Animated.View>
     </View>
   );
 }
@@ -109,13 +111,16 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -2 },
     elevation: 10,
   },
+  handleContainer: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
   handle: {
     width: 56,
     height: 6,
     backgroundColor: '#e2e8f4',
     alignSelf: 'center',
     borderRadius: 3,
-    marginVertical: 12,
   },
   content: {
     flex: 1,
