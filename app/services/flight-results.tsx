@@ -514,10 +514,27 @@ export default function FlightResultsScreen() {
     ));
   }, [airportList, defaultToCity, handleBookNowPress, parsedPayload, parsedResult?.flightRights]);
 
-  const handleCloseSheet = () => {
+  const handleCloseSheet = useCallback(() => {
     setSheetVisible(false);
     setSelectedFlight(null);
-  };
+  }, []);
+
+  const handleProceedToBook = useCallback(() => {
+    if (!selectedFlight) {
+      return;
+    }
+
+    const params: Record<string, string> = {
+      flight: JSON.stringify(selectedFlight),
+    };
+
+    if (parsedPayload) {
+      params.payload = JSON.stringify(parsedPayload);
+    }
+
+    router.push({ pathname: '/services/passenger', params });
+    handleCloseSheet();
+  }, [handleCloseSheet, parsedPayload, router, selectedFlight]);
 
   const selectedItinerary = selectedFlight?.itineraries?.[0];
   const selectedOrigin = selectedItinerary?.segments?.[0]?.departure?.iataCode;
@@ -849,7 +866,7 @@ export default function FlightResultsScreen() {
             <Pressable style={styles.sheetSecondaryButton} onPress={handleCloseSheet}>
               <Text style={styles.sheetSecondaryText}>Close</Text>
             </Pressable>
-            <Pressable style={styles.sheetPrimaryButton} onPress={handleCloseSheet}>
+            <Pressable style={styles.sheetPrimaryButton} onPress={handleProceedToBook}>
               <Text style={styles.sheetPrimaryText}>Proceed to book</Text>
             </Pressable>
           </View>
