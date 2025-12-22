@@ -6,6 +6,7 @@ export default function ServicesLayout() {
       <Stack.Screen name="flights" options={{ title: 'Flights', headerShown: false }}  />
       <Stack.Screen name="flight-results" options={{ title: 'Flight results', headerShown: false }} />
       <Stack.Screen name="passenger" options={{ title: 'Passenger', headerShown: false }} />
+      <Stack.Screen name="passenger-form" options={{ title: 'Passenger form', headerShown: false }} />
       <Stack.Screen name="hotels" options={{ title: 'Hotels' }} />
       <Stack.Screen name="rides" options={{ title: 'Rides' }} />
       <Stack.Screen name="visa" options={{ title: 'Visa' }} />

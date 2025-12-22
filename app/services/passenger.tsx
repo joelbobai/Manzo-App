@@ -1,8 +1,8 @@
 import { formatMoney } from './flight-results';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useMemo } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { FlightOffer, FlightSearchPayload, FlightSegment } from '@/types/flight';
 
 type PassengerParams = {
@@ -77,6 +77,28 @@ export default function PassengerScreen() {
   const lastSegment = segments[segments.length - 1];
 
   const passengerCounts = searchPayload?.passenger;
+  const rawFlightParam = Array.isArray(params.flight) ? params.flight[0] : params.flight;
+  const rawPayloadParam = Array.isArray(params.payload) ? params.payload[0] : params.payload;
+
+  const handleStartPassengerForm = useCallback(() => {
+    if (!selectedFlight || !rawFlightParam) {
+      Alert.alert(
+        'Select a flight first',
+        'Choose a flight from the results screen and try again so we can pass its details to the passenger form.',
+      );
+      return;
+    }
+
+    const nextParams: Record<string, string> = {
+      flight: rawFlightParam,
+    };
+
+    if (rawPayloadParam) {
+      nextParams.payload = rawPayloadParam;
+    }
+
+    router.push({ pathname: '/services/passenger-form', params: nextParams });
+  }, [rawFlightParam, rawPayloadParam, router, selectedFlight]);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -177,7 +199,7 @@ export default function PassengerScreen() {
             required travel documents. All data from the search and selection has been carried over to this screen so the booking
             flow can proceed without re-entering details.
           </Text>
-          <Pressable style={styles.primaryButton}>
+          <Pressable style={styles.primaryButton} onPress={handleStartPassengerForm}>
             <Text style={styles.primaryButtonText}>Start passenger form</Text>
           </Pressable>
         </View>
