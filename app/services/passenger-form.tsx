@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
+import CryptoJS from 'crypto-js';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -12,24 +13,40 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import type { FlightOffer, FlightSearchPayload, PassengerCounts, FlightSegment } from '@/types/flight';
+import type { FlightDictionaries, FlightOffer, FlightSearchPayload, PassengerCounts, FlightSegment } from '@/types/flight';
 import { formatMoney } from './flight-results';
 
 type PassengerFormParams = {
   flight?: string | string[];
   payload?: string | string[];
+  dictionaries?: string | string[];
+  offerId?: string | string[];
 };
 
-type PassengerField = 'firstName' | 'lastName' | 'email' | 'phone';
+type PassengerField =
+  | 'title'
+  | 'gender'
+  | 'firstName'
+  | 'lastName'
+  | 'email'
+  | 'phoneCountryCode'
+  | 'phoneNumber'
+  | 'dateOfBirth'
+  | 'passportNumber';
 
 type PassengerFormState = {
   id: string;
   label: string;
   type: 'adult' | 'child' | 'infant';
+  title: string;
+  gender: string;
   firstName: string;
   lastName: string;
   email: string;
-  phone: string;
+  phoneCountryCode: string;
+  phoneNumber: string;
+  dateOfBirth: string;
+  passportNumber: string;
 };
 
 const parseJsonParam = <T,>(value?: string | string[]): T | null => {
@@ -54,10 +71,15 @@ const buildPassengerForms = (counts?: PassengerCounts | null): PassengerFormStat
       id: `adult-${i + 1}`,
       label: `Adult ${i + 1}`,
       type: 'adult',
+      title: '',
+      gender: '',
       firstName: '',
       lastName: '',
       email: '',
-      phone: '',
+      phoneCountryCode: '',
+      phoneNumber: '',
+      dateOfBirth: '',
+      passportNumber: '',
     });
   }
 
@@ -66,10 +88,15 @@ const buildPassengerForms = (counts?: PassengerCounts | null): PassengerFormStat
       id: `child-${i + 1}`,
       label: `Child ${i + 1}`,
       type: 'child',
+      title: '',
+      gender: '',
       firstName: '',
       lastName: '',
       email: '',
-      phone: '',
+      phoneCountryCode: '',
+      phoneNumber: '',
+      dateOfBirth: '',
+      passportNumber: '',
     });
   }
 
@@ -78,10 +105,15 @@ const buildPassengerForms = (counts?: PassengerCounts | null): PassengerFormStat
       id: `infant-${i + 1}`,
       label: `Infant ${i + 1}`,
       type: 'infant',
+      title: '',
+      gender: '',
       firstName: '',
       lastName: '',
       email: '',
-      phone: '',
+      phoneCountryCode: '',
+      phoneNumber: '',
+      dateOfBirth: '',
+      passportNumber: '',
     });
   }
 
@@ -90,10 +122,15 @@ const buildPassengerForms = (counts?: PassengerCounts | null): PassengerFormStat
       id: 'adult-1',
       label: 'Adult 1',
       type: 'adult',
+      title: '',
+      gender: '',
       firstName: '',
       lastName: '',
       email: '',
-      phone: '',
+      phoneCountryCode: '',
+      phoneNumber: '',
+      dateOfBirth: '',
+      passportNumber: '',
     });
   }
 
@@ -149,6 +186,20 @@ const PassengerCard = ({
     <View style={styles.inputGrid}>
       <TextInput
         style={styles.input}
+        placeholder="Title (e.g. MR, MRS)"
+        value={passenger.title}
+        onChangeText={(text) => onChange(passenger.id, 'title', text.toUpperCase())}
+        autoCapitalize="characters"
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Gender (MALE/FEMALE/OTHER)"
+        value={passenger.gender}
+        onChangeText={(text) => onChange(passenger.id, 'gender', text.toUpperCase())}
+        autoCapitalize="characters"
+      />
+      <TextInput
+        style={styles.input}
         placeholder="First name"
         value={passenger.firstName}
         onChangeText={(text) => onChange(passenger.id, 'firstName', text)}
@@ -171,10 +222,30 @@ const PassengerCard = ({
       />
       <TextInput
         style={styles.input}
+        placeholder="Phone country code (e.g. 234)"
+        value={passenger.phoneCountryCode}
+        onChangeText={(text) => onChange(passenger.id, 'phoneCountryCode', text.replace(/\D+/g, ''))}
+        keyboardType="number-pad"
+      />
+      <TextInput
+        style={styles.input}
         placeholder="Phone number"
-        value={passenger.phone}
-        onChangeText={(text) => onChange(passenger.id, 'phone', text)}
+        value={passenger.phoneNumber}
+        onChangeText={(text) => onChange(passenger.id, 'phoneNumber', text)}
         keyboardType="phone-pad"
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Date of birth (YYYY-MM-DD)"
+        value={passenger.dateOfBirth}
+        onChangeText={(text) => onChange(passenger.id, 'dateOfBirth', text)}
+        keyboardType="numbers-and-punctuation"
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Passport number (optional)"
+        value={passenger.passportNumber}
+        onChangeText={(text) => onChange(passenger.id, 'passportNumber', text)}
       />
     </View>
   </View>
@@ -186,6 +257,8 @@ export default function PassengerFormScreen() {
 
   const selectedFlight = useMemo(() => parseJsonParam<FlightOffer>(params.flight), [params.flight]);
   const searchPayload = useMemo(() => parseJsonParam<FlightSearchPayload>(params.payload), [params.payload]);
+  const dictionaries = useMemo(() => parseJsonParam<FlightDictionaries>(params.dictionaries), [params.dictionaries]);
+  const offerIdParam = useMemo(() => (Array.isArray(params.offerId) ? params.offerId[0] : params.offerId), [params.offerId]);
 
   const itinerary = selectedFlight?.itineraries?.[0];
   const segments = itinerary?.segments ?? [];
@@ -194,18 +267,65 @@ export default function PassengerFormScreen() {
   const passengerCounts = searchPayload?.passenger;
 
   const [forms, setForms] = useState<PassengerFormState[]>(() => buildPassengerForms(passengerCounts));
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (id: string, field: PassengerField, value: string) => {
     setForms((prev) => prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)));
   };
 
-  const handleSubmit = () => {
+  const formatPassengersForTicketing = (passengers: PassengerFormState[]) =>
+    passengers.map((passenger, index) => {
+      const trimmedPhone = passenger.phoneNumber.replace(/\D+/g, '');
+      const trimmedCode = passenger.phoneCountryCode.replace(/\D+/g, '');
+      const phoneNumber = trimmedPhone;
+      const countryCallingCode = trimmedCode;
+
+      const traveler = {
+        id: `${index + 1}`,
+        dateOfBirth: passenger.dateOfBirth.trim(),
+        name: {
+          firstName: passenger.firstName.trim(),
+          lastName: passenger.lastName.trim(),
+        },
+        gender: passenger.gender.trim() || 'UNSPECIFIED',
+        contact: {
+          emailAddress: passenger.email.trim(),
+          phones: [
+            {
+              deviceType: 'MOBILE' as const,
+              countryCallingCode,
+              number: phoneNumber,
+            },
+          ],
+        },
+      };
+
+      if (passenger.passportNumber.trim()) {
+        return {
+          ...traveler,
+          documents: [
+            {
+              documentType: 'PASSPORT',
+              number: passenger.passportNumber.trim(),
+            },
+          ],
+        };
+      }
+
+      return traveler;
+    });
+
+  const handleSubmit = async () => {
     const hasMissing = forms.some(
       (passenger) =>
+        !passenger.title.trim() ||
+        !passenger.gender.trim() ||
         !passenger.firstName.trim() ||
         !passenger.lastName.trim() ||
         !passenger.email.trim() ||
-        !passenger.phone.trim(),
+        !passenger.phoneCountryCode.trim() ||
+        !passenger.phoneNumber.trim() ||
+        !passenger.dateOfBirth.trim(),
     );
 
     if (hasMissing) {
@@ -213,11 +333,70 @@ export default function PassengerFormScreen() {
       return;
     }
 
-    Alert.alert(
-      'Passenger details captured',
-      'Your passenger information has been collected. Continue to payment once you finish reviewing.',
-    );
-    router.back();
+    if (!selectedFlight) {
+      Alert.alert('Missing flight', 'Please return to flight results and select a flight.');
+      return;
+    }
+
+    if (!dictionaries) {
+      Alert.alert('Missing dictionaries', 'Flight dictionaries are required to complete this booking step.');
+      return;
+    }
+
+    const travelers = formatPassengersForTicketing(forms);
+    const ticketPayload = {
+      flight: selectedFlight,
+      travelers,
+      littelFlightInfo: [{ dictionaries }],
+    };
+
+    const secretKey = process.env.EXPO_PUBLIC_SECRET_KEY || 'CHANGE_ME';
+    const hashedData = CryptoJS.AES.encrypt(JSON.stringify(ticketPayload), secretKey).toString();
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('https://manzo-be.onrender.com/api/v1/flights/reserveTicket', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ hashedData }),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        throw new Error(errorBody || 'Ticket reservation failed.');
+      }
+
+      const data = await response.json();
+      const reservedId = data?.reservedId;
+
+      if (!reservedId) {
+        Alert.alert('Reservation error', 'We could not obtain a reservation ID. Please try again.');
+        return;
+      }
+
+      const offerId = offerIdParam || selectedFlight.id;
+
+      if (!offerId) {
+        Alert.alert('Missing offer ID', 'Unable to determine the selected offer. Please try again.');
+        return;
+      }
+
+      router.push({
+        pathname: '/overviewAndpayment',
+        params: {
+          offerId,
+          reservedId,
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Ticket reservation failed.';
+      Alert.alert('Reservation failed', message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -298,8 +477,8 @@ export default function PassengerFormScreen() {
               Fill in each traveller&apos;s legal name and contact information. We&apos;ll reuse this information on the payment
               screen so you don&apos;t need to re-enter it later.
             </Text>
-            <Pressable style={styles.primaryButton} onPress={handleSubmit}>
-              <Text style={styles.primaryButtonText}>Save passenger details</Text>
+            <Pressable style={[styles.primaryButton, isLoading && styles.primaryButtonDisabled]} onPress={handleSubmit} disabled={isLoading}>
+              <Text style={styles.primaryButtonText}>{isLoading ? 'Saving...' : 'Save passenger details'}</Text>
             </Pressable>
           </View>
         </View>
@@ -496,6 +675,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
+  },
+  primaryButtonDisabled: {
+    opacity: 0.7,
   },
   primaryButtonText: {
     color: '#ffffff',
