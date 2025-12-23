@@ -1,16 +1,17 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import CryptoJS from 'crypto-js';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import type { FlightDictionaries, FlightOffer, FlightSearchPayload, PassengerCounts, FlightSegment } from '@/types/flight';
@@ -49,6 +50,38 @@ type PassengerFormState = {
   dateOfBirth: string;
   passportNumber: string;
 };
+
+const TITLE_OPTIONS = ['MR', 'MRS', 'MS', 'MISS', 'MASTER', 'DR'];
+
+const GENDER_OPTIONS = ['MALE', 'FEMALE', 'OTHER'];
+
+const COUNTRY_CODES = [
+  { label: 'United States (+1)', value: '1' },
+  { label: 'Nigeria (+234)', value: '234' },
+  { label: 'United Kingdom (+44)', value: '44' },
+  { label: 'Ghana (+233)', value: '233' },
+  { label: 'Kenya (+254)', value: '254' },
+  { label: 'South Africa (+27)', value: '27' },
+  { label: 'United Arab Emirates (+971)', value: '971' },
+  { label: 'India (+91)', value: '91' },
+  { label: 'Canada (+1)', value: '1' },
+  { label: 'France (+33)', value: '33' },
+];
+
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
 
 const parseJsonParam = <T,>(value?: string | string[]): T | null => {
   const rawValue = Array.isArray(value) ? value[0] : value;
@@ -178,79 +211,259 @@ const PassengerCard = ({
 }: {
   passenger: PassengerFormState;
   onChange: (id: string, field: PassengerField, value: string) => void;
-}) => (
-  <View style={styles.passengerCard}>
-    <View style={styles.passengerCardHeader}>
-      <Text style={styles.passengerLabel}>{passenger.label}</Text>
-      <Text style={styles.passengerPill}>{passenger.type}</Text>
+}) => {
+  const [showTitleModal, setShowTitleModal] = useState(false);
+  const [showGenderModal, setShowGenderModal] = useState(false);
+  const [showCountryModal, setShowCountryModal] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const initialDate = passenger.dateOfBirth ? new Date(passenger.dateOfBirth) : new Date(1990, 0, 1);
+    return initialDate.getMonth();
+  });
+  const [calendarYear, setCalendarYear] = useState(() => {
+    const initialDate = passenger.dateOfBirth ? new Date(passenger.dateOfBirth) : new Date(1990, 0, 1);
+    return initialDate.getFullYear();
+  });
+
+  const formatDate = (date: Date) => date.toISOString().split('T')[0];
+  const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+  const days = Array.from({ length: daysInMonth }, (_, index) => index + 1);
+
+  const handleDateSelect = (date: Date) => {
+    onChange(passenger.id, 'dateOfBirth', formatDate(date));
+  };
+
+  const openDatePicker = () => {
+    const initialDate = passenger.dateOfBirth ? new Date(passenger.dateOfBirth) : new Date(1990, 0, 1);
+
+    setCalendarMonth(initialDate.getMonth());
+    setCalendarYear(initialDate.getFullYear());
+    setShowDatePicker(true);
+  };
+
+  const handleMonthChange = (delta: number) => {
+    const updatedDate = new Date(calendarYear, calendarMonth + delta, 1);
+    setCalendarMonth(updatedDate.getMonth());
+    setCalendarYear(updatedDate.getFullYear());
+  };
+
+  const handleDaySelect = (day: number) => {
+    const candidateDate = new Date(calendarYear, calendarMonth, day);
+    const today = new Date();
+
+    if (candidateDate > today) {
+      return;
+    }
+
+    handleDateSelect(candidateDate);
+    setShowDatePicker(false);
+  };
+
+  const renderOptionModal = ({
+    visible,
+    onClose,
+    options,
+    onSelect,
+  }: {
+    visible: boolean;
+    onClose: () => void;
+    options: string[];
+    onSelect: (value: string) => void;
+  }) => (
+    <Modal transparent animationType="fade" visible={visible} onRequestClose={onClose}>
+      <Pressable style={styles.modalOverlay} onPress={onClose}>
+        <Pressable style={styles.modalContent} onPress={(event) => event.stopPropagation()}>
+          {options.map((option) => (
+            <TouchableOpacity
+              key={option}
+              style={styles.optionRow}
+              onPress={() => {
+                onSelect(option);
+                onClose();
+              }}
+            >
+              <Text style={styles.optionLabel}>{option}</Text>
+            </TouchableOpacity>
+          ))}
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+
+  const renderCountryModal = () => (
+    <Modal transparent animationType="fade" visible={showCountryModal} onRequestClose={() => setShowCountryModal(false)}>
+      <Pressable style={styles.modalOverlay} onPress={() => setShowCountryModal(false)}>
+        <Pressable
+          style={styles.modalContent}
+          onPress={(event) => event.stopPropagation()}
+        >
+          <ScrollView>
+            {COUNTRY_CODES.map((country) => (
+              <TouchableOpacity
+                key={country.value + country.label}
+                style={styles.optionRow}
+                onPress={() => {
+                  onChange(passenger.id, 'phoneCountryCode', country.value);
+                  setShowCountryModal(false);
+                }}
+              >
+                <Text style={styles.optionLabel}>{country.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+
+  return (
+    <View style={styles.passengerCard}>
+      <View style={styles.passengerCardHeader}>
+        <Text style={styles.passengerLabel}>{passenger.label}</Text>
+        <Text style={styles.passengerPill}>{passenger.type}</Text>
+      </View>
+      <View style={styles.inputGrid}>
+        <Pressable style={styles.selectInput} onPress={() => setShowTitleModal(true)}>
+          <Text style={passenger.title ? styles.selectValue : styles.selectPlaceholder}>
+            {passenger.title || 'Select title'}
+          </Text>
+          <Ionicons name="chevron-down" size={18} color="#5c6270" />
+        </Pressable>
+        <Pressable style={styles.selectInput} onPress={() => setShowGenderModal(true)}>
+          <Text style={passenger.gender ? styles.selectValue : styles.selectPlaceholder}>
+            {passenger.gender || 'Select gender'}
+          </Text>
+          <Ionicons name="chevron-down" size={18} color="#5c6270" />
+        </Pressable>
+        <TextInput
+          style={styles.input}
+          placeholder="First name"
+          value={passenger.firstName}
+          onChangeText={(text) => onChange(passenger.id, 'firstName', text)}
+          autoCapitalize="words"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Last name"
+          value={passenger.lastName}
+          onChangeText={(text) => onChange(passenger.id, 'lastName', text)}
+          autoCapitalize="words"
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          value={passenger.email}
+          onChangeText={(text) => onChange(passenger.id, 'email', text)}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+        <Pressable style={styles.selectInput} onPress={() => setShowCountryModal(true)}>
+          <Text style={passenger.phoneCountryCode ? styles.selectValue : styles.selectPlaceholder}>
+            {passenger.phoneCountryCode ? `+${passenger.phoneCountryCode}` : 'Select country code'}
+          </Text>
+          <Ionicons name="chevron-down" size={18} color="#5c6270" />
+        </Pressable>
+        <TextInput
+          style={styles.input}
+          placeholder="Phone number"
+          value={passenger.phoneNumber}
+          onChangeText={(text) => onChange(passenger.id, 'phoneNumber', text)}
+          keyboardType="phone-pad"
+        />
+        <Pressable style={styles.selectInput} onPress={openDatePicker}>
+          <Text style={passenger.dateOfBirth ? styles.selectValue : styles.selectPlaceholder}>
+            {passenger.dateOfBirth || 'Select date of birth'}
+          </Text>
+          <Ionicons name="calendar-outline" size={18} color="#5c6270" />
+        </Pressable>
+        <TextInput
+          style={styles.input}
+          placeholder="Passport number (optional)"
+          value={passenger.passportNumber}
+          onChangeText={(text) => onChange(passenger.id, 'passportNumber', text)}
+        />
+      </View>
+
+      {renderOptionModal({
+        visible: showTitleModal,
+        onClose: () => setShowTitleModal(false),
+        options: TITLE_OPTIONS,
+        onSelect: (value) => onChange(passenger.id, 'title', value),
+      })}
+
+      {renderOptionModal({
+        visible: showGenderModal,
+        onClose: () => setShowGenderModal(false),
+        options: GENDER_OPTIONS,
+        onSelect: (value) => onChange(passenger.id, 'gender', value),
+      })}
+
+      {renderCountryModal()}
+
+      {showDatePicker ? (
+        <Modal transparent animationType="slide" visible={showDatePicker} onRequestClose={() => setShowDatePicker(false)}>
+          <Pressable style={styles.dateModalOverlay} onPress={() => setShowDatePicker(false)}>
+            <Pressable
+              style={styles.dateModalContent}
+              onPress={(event) => event.stopPropagation()}
+            >
+              <View style={styles.calendarHeader}>
+                <Pressable style={styles.monthNavButton} onPress={() => handleMonthChange(-1)}>
+                  <Ionicons name="chevron-back" size={20} color="#0c2047" />
+                </Pressable>
+                <Text style={styles.monthLabel}>{`${MONTH_NAMES[calendarMonth]} ${calendarYear}`}</Text>
+                <Pressable style={styles.monthNavButton} onPress={() => handleMonthChange(1)}>
+                  <Ionicons name="chevron-forward" size={20} color="#0c2047" />
+                </Pressable>
+              </View>
+
+              <View style={styles.calendarGrid}>
+                {days.map((day) => {
+                  const candidateDate = new Date(calendarYear, calendarMonth, day);
+                  const formattedDate = formatDate(candidateDate);
+                  const isSelected = passenger.dateOfBirth === formattedDate;
+                  const isDisabled = candidateDate > new Date();
+
+                  return (
+                    <Pressable
+                      key={formattedDate}
+                      style={[
+                        styles.dayButton,
+                        isSelected && styles.dayButtonSelected,
+                        isDisabled && styles.dayButtonDisabled,
+                      ]}
+                      onPress={() => {
+                        if (!isDisabled) {
+                          handleDaySelect(day);
+                        }
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.dayLabel,
+                          isSelected && styles.dayLabelSelected,
+                          isDisabled && styles.dayLabelDisabled,
+                        ]}
+                      >
+                        {day}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <View style={styles.dateModalActions}>
+                <Pressable style={styles.secondaryButton} onPress={() => setShowDatePicker(false)}>
+                  <Text style={styles.secondaryButtonText}>Close</Text>
+                </Pressable>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
+      ) : null}
     </View>
-    <View style={styles.inputGrid}>
-      <TextInput
-        style={styles.input}
-        placeholder="Title (e.g. MR, MRS)"
-        value={passenger.title}
-        onChangeText={(text) => onChange(passenger.id, 'title', text.toUpperCase())}
-        autoCapitalize="characters"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Gender (MALE/FEMALE/OTHER)"
-        value={passenger.gender}
-        onChangeText={(text) => onChange(passenger.id, 'gender', text.toUpperCase())}
-        autoCapitalize="characters"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="First name"
-        value={passenger.firstName}
-        onChangeText={(text) => onChange(passenger.id, 'firstName', text)}
-        autoCapitalize="words"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Last name"
-        value={passenger.lastName}
-        onChangeText={(text) => onChange(passenger.id, 'lastName', text)}
-        autoCapitalize="words"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={passenger.email}
-        onChangeText={(text) => onChange(passenger.id, 'email', text)}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Phone country code (e.g. 234)"
-        value={passenger.phoneCountryCode}
-        onChangeText={(text) => onChange(passenger.id, 'phoneCountryCode', text.replace(/\D+/g, ''))}
-        keyboardType="number-pad"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Phone number"
-        value={passenger.phoneNumber}
-        onChangeText={(text) => onChange(passenger.id, 'phoneNumber', text)}
-        keyboardType="phone-pad"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Date of birth (YYYY-MM-DD)"
-        value={passenger.dateOfBirth}
-        onChangeText={(text) => onChange(passenger.id, 'dateOfBirth', text)}
-        keyboardType="numbers-and-punctuation"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Passport number (optional)"
-        value={passenger.passportNumber}
-        onChangeText={(text) => onChange(passenger.id, 'passportNumber', text)}
-      />
-    </View>
-  </View>
-);
+  );
+};
 
 export default function PassengerFormScreen() {
   const router = useRouter();
@@ -665,6 +878,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#0c2047',
   },
+  selectInput: {
+    backgroundColor: '#ffffff',
+    borderColor: '#d8dde5',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  selectPlaceholder: {
+    color: '#9ba3b4',
+    fontSize: 14,
+  },
+  selectValue: {
+    color: '#0c2047',
+    fontSize: 14,
+    fontWeight: '600',
+  },
   bodyText: {
     color: '#3b4254',
     fontSize: 14,
@@ -680,9 +913,111 @@ const styles = StyleSheet.create({
   primaryButtonDisabled: {
     opacity: 0.7,
   },
+  primaryButtonSmall: {
+    backgroundColor: '#f27805',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  secondaryButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#e6e8ec',
+  },
+  secondaryButtonText: {
+    color: '#0c2047',
+    fontWeight: '700',
+  },
   primaryButtonText: {
     color: '#ffffff',
     fontWeight: '700',
     fontSize: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    backgroundColor: '#ffffff',
+    borderRadius: 14,
+    paddingVertical: 10,
+    maxHeight: '70%',
+  },
+  optionRow: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eceff3',
+  },
+  optionLabel: {
+    fontSize: 15,
+    color: '#0c2047',
+    fontWeight: '600',
+  },
+  dateModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'flex-end',
+  },
+  dateModalContent: {
+    backgroundColor: '#ffffff',
+    padding: 16,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+  },
+  dateModalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    gap: 12,
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  monthLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0c2047',
+  },
+  monthNavButton: {
+    padding: 6,
+    borderRadius: 10,
+    backgroundColor: '#f2f4f7',
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  dayButton: {
+    width: '14.5%',
+    aspectRatio: 1,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f2f4f7',
+  },
+  dayButtonSelected: {
+    backgroundColor: '#0c2047',
+  },
+  dayButtonDisabled: {
+    backgroundColor: '#eceff3',
+  },
+  dayLabel: {
+    color: '#0c2047',
+    fontWeight: '700',
+  },
+  dayLabelSelected: {
+    color: '#ffffff',
+  },
+  dayLabelDisabled: {
+    color: '#9ba3b4',
   },
 });
