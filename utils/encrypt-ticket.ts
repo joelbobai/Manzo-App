@@ -1,19 +1,10 @@
+import * as Crypto from 'expo-crypto';
 import forge from 'node-forge';
 
 const SALT_PREFIX = 'Salted__';
 const KEY_BYTES = 32;
 const IV_BYTES = 16;
 const SALT_BYTES = 8;
-
-const generateSalt = (size: number) => {
-  const salt = new Uint8Array(size);
-
-  for (let index = 0; index < salt.length; index += 1) {
-    salt[index] = Math.floor(Math.random() * 256);
-  }
-
-  return String.fromCharCode(...salt);
-};
 
 const deriveKeyAndIv = (secretKey: string, salt: string) => {
   const utf8Key = forge.util.encodeUtf8(secretKey);
@@ -35,7 +26,8 @@ const deriveKeyAndIv = (secretKey: string, salt: string) => {
 };
 
 export const encryptTicketPayload = (payload: unknown, secretKey: string) => {
-  const salt = generateSalt(SALT_BYTES);
+  const saltBytes = Crypto.getRandomBytes(SALT_BYTES);
+  const salt = String.fromCharCode(...saltBytes);
   const { key, iv } = deriveKeyAndIv(secretKey, salt);
   const cipher = forge.cipher.createCipher('AES-CBC', key);
   const textPayload = typeof payload === 'string' ? payload : JSON.stringify(payload);
