@@ -1,5 +1,6 @@
+import type { FlightDictionaries, FlightOffer, FlightSearchPayload, FlightSegment, PassengerCounts } from '@/types/flight';
+import { encryptTicketPayload } from '@/utils/encrypt-ticket';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import CryptoJS from 'crypto-js';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
@@ -13,8 +14,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import type { FlightDictionaries, FlightOffer, FlightSearchPayload, PassengerCounts, FlightSegment } from '@/types/flight';
-import { encryptTicketPayload } from '@/utils/encrypt-ticket';
 import { formatMoney } from './flight-results';
 
 type PassengerFormParams = {
