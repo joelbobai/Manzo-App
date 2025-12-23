@@ -564,7 +564,7 @@ export default function PassengerFormScreen() {
       littelFlightInfo: [{ dictionaries }],
     };
 
-    const secretKey = process.env.EXPO_PUBLIC_SECRET_KEY || 'CHANGE_ME';
+    const secretKey = process.env.EXPO_PUBLIC_SECRET_KEY || '';
     const hashedData = encryptTicketPayload(ticketPayload, secretKey);
 
     setIsLoading(true);
