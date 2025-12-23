@@ -8,6 +8,8 @@ import type { FlightOffer, FlightSearchPayload, FlightSegment } from '@/types/fl
 type PassengerParams = {
   flight?: string | string[];
   payload?: string | string[];
+  dictionaries?: string | string[];
+  offerId?: string | string[];
 };
 
 const parseJsonParam = <T,>(value?: string | string[]): T | null => {
@@ -79,6 +81,8 @@ export default function PassengerScreen() {
   const passengerCounts = searchPayload?.passenger;
   const rawFlightParam = Array.isArray(params.flight) ? params.flight[0] : params.flight;
   const rawPayloadParam = Array.isArray(params.payload) ? params.payload[0] : params.payload;
+  const rawDictionariesParam = Array.isArray(params.dictionaries) ? params.dictionaries[0] : params.dictionaries;
+  const rawOfferIdParam = Array.isArray(params.offerId) ? params.offerId[0] : params.offerId;
 
   const handleStartPassengerForm = useCallback(() => {
     if (!selectedFlight || !rawFlightParam) {
@@ -97,8 +101,16 @@ export default function PassengerScreen() {
       nextParams.payload = rawPayloadParam;
     }
 
+    if (rawDictionariesParam) {
+      nextParams.dictionaries = rawDictionariesParam;
+    }
+
+    if (rawOfferIdParam) {
+      nextParams.offerId = rawOfferIdParam;
+    }
+
     router.push({ pathname: '/services/passenger-form', params: nextParams });
-  }, [rawFlightParam, rawPayloadParam, router, selectedFlight]);
+  }, [rawDictionariesParam, rawFlightParam, rawOfferIdParam, rawPayloadParam, router, selectedFlight]);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>

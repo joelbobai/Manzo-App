@@ -526,15 +526,20 @@ export default function FlightResultsScreen() {
 
     const params: Record<string, string> = {
       flight: JSON.stringify(selectedFlight),
+      offerId: selectedFlight.id ?? '',
     };
 
     if (parsedPayload) {
       params.payload = JSON.stringify(parsedPayload);
     }
 
+    if (dictionaries) {
+      params.dictionaries = JSON.stringify(dictionaries);
+    }
+
     router.push({ pathname: '/services/passenger', params });
     handleCloseSheet();
-  }, [handleCloseSheet, parsedPayload, router, selectedFlight]);
+  }, [dictionaries, handleCloseSheet, parsedPayload, router, selectedFlight]);
 
   const selectedItinerary = selectedFlight?.itineraries?.[0];
   const selectedOrigin = selectedItinerary?.segments?.[0]?.departure?.iataCode;
