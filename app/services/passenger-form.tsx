@@ -1,7 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import CryptoJS from 'crypto-js';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -14,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import type { FlightDictionaries, FlightOffer, FlightSearchPayload, PassengerCounts, FlightSegment } from '@/types/flight';
+import { encryptTicketPayload } from '@/utils/encrypt-ticket';
 import { formatMoney } from './flight-results';
 
 type PassengerFormParams = {
@@ -351,7 +351,7 @@ export default function PassengerFormScreen() {
     };
 
     const secretKey = process.env.EXPO_PUBLIC_SECRET_KEY || 'CHANGE_ME';
-    const hashedData = CryptoJS.AES.encrypt(JSON.stringify(ticketPayload), secretKey).toString();
+    const hashedData = encryptTicketPayload(ticketPayload, secretKey);
 
     setIsLoading(true);
 
