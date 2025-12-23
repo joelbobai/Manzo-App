@@ -83,6 +83,8 @@ const MONTH_NAMES = [
   'December',
 ];
 
+const WEEKDAY_ABBREVIATIONS = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+
 const parseJsonParam = <T,>(value?: string | string[]): T | null => {
   const rawValue = Array.isArray(value) ? value[0] : value;
 
@@ -216,6 +218,8 @@ const PassengerCard = ({
   const [showGenderModal, setShowGenderModal] = useState(false);
   const [showCountryModal, setShowCountryModal] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showMonthSelector, setShowMonthSelector] = useState(false);
+  const [showYearSelector, setShowYearSelector] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const initialDate = passenger.dateOfBirth ? new Date(passenger.dateOfBirth) : new Date(1990, 0, 1);
     return initialDate.getMonth();
@@ -228,6 +232,11 @@ const PassengerCard = ({
   const formatDate = (date: Date) => date.toISOString().split('T')[0];
   const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
   const days = Array.from({ length: daysInMonth }, (_, index) => index + 1);
+  const firstDayOfMonth = new Date(calendarYear, calendarMonth, 1).getDay();
+  const leadingPlaceholders = Array.from({ length: firstDayOfMonth }, (_, index) => `placeholder-${index}`);
+
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: currentYear - 1899 }, (_, index) => `${1900 + index}`).reverse();
 
   const handleDateSelect = (date: Date) => {
     onChange(passenger.id, 'dateOfBirth', formatDate(date));
@@ -411,13 +420,69 @@ const PassengerCard = ({
                 <Pressable style={styles.monthNavButton} onPress={() => handleMonthChange(-1)}>
                   <Ionicons name="chevron-back" size={20} color="#0c2047" />
                 </Pressable>
-                <Text style={styles.monthLabel}>{`${MONTH_NAMES[calendarMonth]} ${calendarYear}`}</Text>
+                <View style={styles.monthYearSelectors}>
+                  <Pressable style={styles.dropdownSelector} onPress={() => setShowMonthSelector((prev) => !prev)}>
+                    <Text style={styles.monthLabel}>{MONTH_NAMES[calendarMonth]}</Text>
+                    <Ionicons name={showMonthSelector ? 'chevron-up' : 'chevron-down'} size={18} color="#0c2047" />
+                  </Pressable>
+                  <Pressable style={styles.dropdownSelector} onPress={() => setShowYearSelector((prev) => !prev)}>
+                    <Text style={styles.monthLabel}>{calendarYear}</Text>
+                    <Ionicons name={showYearSelector ? 'chevron-up' : 'chevron-down'} size={18} color="#0c2047" />
+                  </Pressable>
+                </View>
                 <Pressable style={styles.monthNavButton} onPress={() => handleMonthChange(1)}>
                   <Ionicons name="chevron-forward" size={20} color="#0c2047" />
                 </Pressable>
               </View>
 
+              {showMonthSelector ? (
+                <View style={styles.selectorDropdown}>
+                  {MONTH_NAMES.map((month, index) => (
+                    <Pressable
+                      key={month}
+                      style={styles.selectorOption}
+                      onPress={() => {
+                        setCalendarMonth(index);
+                        setShowMonthSelector(false);
+                      }}
+                    >
+                      <Text style={styles.selectorOptionLabel}>{month}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+
+              {showYearSelector ? (
+                <View style={styles.selectorDropdown}>
+                  <ScrollView style={styles.yearScroll}>
+                    {yearOptions.map((year) => (
+                      <Pressable
+                        key={year}
+                        style={styles.selectorOption}
+                        onPress={() => {
+                          setCalendarYear(Number(year));
+                          setShowYearSelector(false);
+                        }}
+                      >
+                        <Text style={styles.selectorOptionLabel}>{year}</Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                </View>
+              ) : null}
+
+              <View style={styles.weekdayRow}>
+                {WEEKDAY_ABBREVIATIONS.map((day) => (
+                  <Text key={day} style={styles.weekdayLabel}>
+                    {day}
+                  </Text>
+                ))}
+              </View>
+
               <View style={styles.calendarGrid}>
+                {leadingPlaceholders.map((placeholder) => (
+                  <View key={placeholder} style={[styles.dayButton, styles.dayButtonEmpty]} />
+                ))}
                 {days.map((day) => {
                   const candidateDate = new Date(calendarYear, calendarMonth, day);
                   const formattedDate = formatDate(candidateDate);
@@ -453,6 +518,18 @@ const PassengerCard = ({
               </View>
 
               <View style={styles.dateModalActions}>
+                <Pressable
+                  style={styles.todayButton}
+                  onPress={() => {
+                    const today = new Date();
+                    setCalendarMonth(today.getMonth());
+                    setCalendarYear(today.getFullYear());
+                    handleDateSelect(today);
+                    setShowDatePicker(false);
+                  }}
+                >
+                  <Text style={styles.todayButtonText}>Today</Text>
+                </Pressable>
                 <Pressable style={styles.secondaryButton} onPress={() => setShowDatePicker(false)}>
                   <Text style={styles.secondaryButtonText}>Close</Text>
                 </Pressable>
@@ -1004,6 +1081,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#f2f4f7',
   },
+  dayButtonEmpty: {
+    backgroundColor: 'transparent',
+  },
   dayButtonSelected: {
     backgroundColor: '#0c2047',
   },
@@ -1019,5 +1099,60 @@ const styles = StyleSheet.create({
   },
   dayLabelDisabled: {
     color: '#9ba3b4',
+  },
+  weekdayRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  weekdayLabel: {
+    width: '14.5%',
+    textAlign: 'center',
+    color: '#9ba3b4',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+  monthYearSelectors: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dropdownSelector: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#f2f4f7',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  selectorDropdown: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e6e8ec',
+    borderRadius: 12,
+    marginBottom: 8,
+    maxHeight: 200,
+  },
+  selectorOption: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  selectorOptionLabel: {
+    fontSize: 14,
+    color: '#0c2047',
+  },
+  yearScroll: {
+    maxHeight: 180,
+  },
+  todayButton: {
+    backgroundColor: '#f27805',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  todayButtonText: {
+    color: '#ffffff',
+    fontWeight: '800',
   },
 });
