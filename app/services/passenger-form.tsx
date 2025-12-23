@@ -1,7 +1,9 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import CryptoJS from 'crypto-js';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import CryptoJS from 'crypto-js';
+
+import type { FlightDictionaries, FlightOffer, FlightSearchPayload, FlightSegment, PassengerCounts } from '@/types/flight';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -13,7 +15,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import type { FlightDictionaries, FlightOffer, FlightSearchPayload, PassengerCounts, FlightSegment } from '@/types/flight';
 import { formatMoney } from './flight-results';
 
 type PassengerFormParams = {
