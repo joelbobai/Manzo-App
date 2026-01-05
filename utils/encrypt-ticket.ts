@@ -1,4 +1,3 @@
-import * as Crypto from 'expo-crypto';
 import forge from 'node-forge';
 
 const SALT_PREFIX = 'Salted__';
@@ -6,20 +5,14 @@ const KEY_BYTES = 32;
 const IV_BYTES = 16;
 const SALT_BYTES = 8;
 
-const createCircularReplacer = () => {
-  const seen = new WeakSet();
+const generateSalt = (size: number) => {
+  const salt = new Uint8Array(size);
 
-  return (_key: string, value: unknown) => {
-    if (typeof value === 'object' && value !== null) {
-      if (seen.has(value as object)) {
-        return '[Circular]';
-      }
+  for (let index = 0; index < salt.length; index += 1) {
+    salt[index] = Math.floor(Math.random() * 256);
+  }
 
-      seen.add(value as object);
-    }
-
-    return value;
-  };
+  return String.fromCharCode(...salt);
 };
 
 const deriveKeyAndIv = (secretKey: string, salt: string) => {
@@ -42,18 +35,10 @@ const deriveKeyAndIv = (secretKey: string, salt: string) => {
 };
 
 export const encryptTicketPayload = (payload: unknown, secretKey: string) => {
-  if (!secretKey) {
-    throw new Error('Missing secret key for ticket encryption');
-  }
-
-  const saltBytes = Crypto.getRandomBytes(SALT_BYTES);
-  const salt = String.fromCharCode(...saltBytes);
+  const salt = generateSalt(SALT_BYTES);
   const { key, iv } = deriveKeyAndIv(secretKey, salt);
   const cipher = forge.cipher.createCipher('AES-CBC', key);
-  const textPayload =
-    typeof payload === 'string'
-      ? payload
-      : JSON.stringify(payload, createCircularReplacer());
+  const textPayload = typeof payload === 'string' ? payload : JSON.stringify(payload);
 
   cipher.start({ iv });
   cipher.update(forge.util.createBuffer(forge.util.encodeUtf8(textPayload)));

@@ -474,17 +474,17 @@ export default function PassengerFormScreen() {
         },
       };
 
-      if (passenger.passportNumber.trim()) {
-        return {
-          ...traveler,
-          documents: [
-            {
-              documentType: 'PASSPORT',
-              number: passenger.passportNumber.trim(),
-            },
-          ],
-        };
-      }
+      // if (passenger.passportNumber.trim()) {
+      //   return {
+      //     ...traveler,
+      //     documents: [
+      //       {
+      //         documentType: 'PASSPORT',
+      //         number: passenger.passportNumber.trim(),
+      //       },
+      //     ],
+      //   };
+      // }
 
       return traveler;
     });
@@ -540,7 +540,7 @@ export default function PassengerFormScreen() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('https://manzo-be.onrender.com/api/v1/flights/reserveTicket', {
+      const response = await fetch('http://192.168.0.135:3800/api/v1/flights/reserveTicket', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
