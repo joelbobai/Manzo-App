@@ -469,34 +469,46 @@ export default function OverviewAndPaymentScreen() {
 
                     return (
                       <View key={segment.id} style={styles.segmentRow}>
-                        <View style={styles.segmentColumn}>
-                          <Text style={styles.segmentCity}>{departureCity}</Text>
-                          <Text style={styles.segmentTime}>Depart • {formatTimeLabel(segment.departure.at)}</Text>
-                          <Text style={styles.segmentDate}>
-                            {formatDateLabel(segment.departure.at)}
-                            {segment.departure.terminal ? ` • Terminal ${segment.departure.terminal}` : ''}
-                          </Text>
-                        </View>
-                        <View style={styles.segmentDivider} />
-                        <View style={styles.segmentColumn}>
-                          <Text style={styles.segmentCity}>{arrivalCity}</Text>
-                          <Text style={styles.segmentTime}>Arrive • {formatTimeLabel(segment.arrival.at)}</Text>
-                          <Text style={styles.segmentDate}>
-                            {formatDateLabel(segment.arrival.at)}
-                            {segment.arrival.terminal ? ` • Terminal ${segment.arrival.terminal}` : ''}
-                          </Text>
-                        </View>
-                        <View style={styles.segmentDivider} />
-                        <View style={styles.segmentBadges}>
-                          <View style={styles.segmentBadge}>
-                            <Text style={styles.segmentBadgeText}>
+                        <View style={styles.segmentHeaderRow}>
+                          <View>
+                            <Text style={styles.segmentAirline}>
                               {carrierName || 'Airline'} {segment.carrierCode}
                               {segment.number}
                             </Text>
+                            <Text style={styles.segmentDurationText}>Duration {formatDurationLabel(segment.duration)}</Text>
                           </View>
-                          <View style={styles.segmentBadge}>
-                            <Text style={styles.segmentBadgeText}>Duration {formatDurationLabel(segment.duration)}</Text>
+                          <View style={[styles.pill, styles.segmentPill]}>
+                            <Text style={[styles.pillText, styles.segmentPillText]}>
+                              {stopCount > 0 ? `${stopCount} stop${stopCount > 1 ? 's' : ''}` : 'Non-stop flight'}
+                            </Text>
                           </View>
+                        </View>
+
+                        <View style={styles.segmentLocations}>
+                          <View style={styles.segmentLocation}>
+                            <Text style={styles.segmentCity}>{departureCity}</Text>
+                            <Text style={styles.segmentTime}>Depart • {formatTimeLabel(segment.departure.at)}</Text>
+                            <Text style={styles.segmentDate}>
+                              {formatDateLabel(segment.departure.at)}
+                              {segment.departure.terminal ? ` • Terminal ${segment.departure.terminal}` : ''}
+                            </Text>
+                          </View>
+                          <View style={styles.segmentConnector}>
+                            <View style={styles.connectorLine} />
+                            <Ionicons name="airplane" size={16} color="#d9570d" />
+                            <View style={styles.connectorLine} />
+                          </View>
+                          <View style={styles.segmentLocation}>
+                            <Text style={styles.segmentCity}>{arrivalCity}</Text>
+                            <Text style={styles.segmentTime}>Arrive • {formatTimeLabel(segment.arrival.at)}</Text>
+                            <Text style={styles.segmentDate}>
+                              {formatDateLabel(segment.arrival.at)}
+                              {segment.arrival.terminal ? ` • Terminal ${segment.arrival.terminal}` : ''}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <View style={styles.segmentBadges}>
                           {fareDetail?.cabin ? (
                             <View style={styles.segmentBadge}>
                               <Text style={styles.segmentBadgeText}>Cabin {fareDetail.cabin}</Text>
@@ -749,16 +761,43 @@ const styles = StyleSheet.create({
     color: '#5c6270',
   },
   segmentRow: {
-    borderTopWidth: 1,
-    borderTopColor: '#eef1f7',
-    paddingTop: 12,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    borderWidth: 1,
+    borderColor: '#eef1f7',
+    backgroundColor: '#f6f8fc',
+    borderRadius: 12,
+    padding: 12,
     gap: 12,
-    alignItems: 'flex-start',
   },
-  segmentColumn: {
-    minWidth: '30%',
+  segmentHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    alignItems: 'center',
+  },
+  segmentAirline: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0c2047',
+  },
+  segmentDurationText: {
+    fontSize: 12,
+    color: '#5c6270',
+  },
+  segmentPill: {
+    backgroundColor: '#fff4ed',
+    borderColor: '#ffd6b8',
+  },
+  segmentPillText: {
+    color: '#d9570d',
+    fontWeight: '700',
+  },
+  segmentLocations: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  segmentLocation: {
+    flex: 1,
     gap: 4,
   },
   segmentCity: {
@@ -774,16 +813,22 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#9ba3b4',
   },
-  segmentDivider: {
+  segmentConnector: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  connectorLine: {
     width: 1,
-    height: '100%',
-    backgroundColor: '#e6e8ec',
+    height: 18,
+    backgroundColor: '#dfe6f1',
   },
   segmentBadges: {
     flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+    paddingTop: 4,
   },
   segmentBadge: {
     backgroundColor: '#f5f7fb',
