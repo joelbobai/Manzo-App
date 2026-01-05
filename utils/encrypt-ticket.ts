@@ -6,6 +6,22 @@ const KEY_BYTES = 32;
 const IV_BYTES = 16;
 const SALT_BYTES = 8;
 
+const createCircularReplacer = () => {
+  const seen = new WeakSet();
+
+  return (_key: string, value: unknown) => {
+    if (typeof value === 'object' && value !== null) {
+      if (seen.has(value as object)) {
+        return '[Circular]';
+      }
+
+      seen.add(value as object);
+    }
+
+    return value;
+  };
+};
+
 const deriveKeyAndIv = (secretKey: string, salt: string) => {
   const utf8Key = forge.util.encodeUtf8(secretKey);
   let derivedBytes = '';
@@ -26,11 +42,18 @@ const deriveKeyAndIv = (secretKey: string, salt: string) => {
 };
 
 export const encryptTicketPayload = (payload: unknown, secretKey: string) => {
+  if (!secretKey) {
+    throw new Error('Missing secret key for ticket encryption');
+  }
+
   const saltBytes = Crypto.getRandomBytes(SALT_BYTES);
   const salt = String.fromCharCode(...saltBytes);
   const { key, iv } = deriveKeyAndIv(secretKey, salt);
   const cipher = forge.cipher.createCipher('AES-CBC', key);
-  const textPayload = typeof payload === 'string' ? payload : JSON.stringify(payload);
+  const textPayload =
+    typeof payload === 'string'
+      ? payload
+      : JSON.stringify(payload, createCircularReplacer());
 
   cipher.start({ iv });
   cipher.update(forge.util.createBuffer(forge.util.encodeUtf8(textPayload)));
