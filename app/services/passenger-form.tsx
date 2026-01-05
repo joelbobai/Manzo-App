@@ -525,7 +525,17 @@ export default function PassengerFormScreen() {
     };
 
     const secretKey = process.env.EXPO_PUBLIC_SECRET_KEY || '';
-    const hashedData = encryptTicketPayload(ticketPayload, secretKey);
+
+    let hashedData: string;
+
+    try {
+      hashedData = encryptTicketPayload(ticketPayload, secretKey);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'We could not prepare your passenger details for submission.';
+      Alert.alert('Reservation failed', message);
+      return;
+    }
 
     setIsLoading(true);
 
