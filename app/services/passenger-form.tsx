@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import type { FlightDictionaries, FlightOffer, FlightSearchPayload, PassengerCounts, FlightSegment } from '@/types/flight';
 import { encryptTicketPayload } from '@/utils/encrypt-ticket';
 import { formatMoney } from './flight-results';
@@ -67,23 +68,6 @@ const COUNTRY_CODES = [
   { label: 'Canada (+1)', value: '1' },
   { label: 'France (+33)', value: '33' },
 ];
-
-const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-
-const WEEKDAY_ABBREVIATIONS = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
 
 const parseJsonParam = <T,>(value?: string | string[]): T | null => {
   const rawValue = Array.isArray(value) ? value[0] : value;
@@ -217,55 +201,46 @@ const PassengerCard = ({
   const [showTitleModal, setShowTitleModal] = useState(false);
   const [showGenderModal, setShowGenderModal] = useState(false);
   const [showCountryModal, setShowCountryModal] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showMonthSelector, setShowMonthSelector] = useState(false);
-  const [showYearSelector, setShowYearSelector] = useState(false);
-  const [calendarMonth, setCalendarMonth] = useState(() => {
-    const initialDate = passenger.dateOfBirth ? new Date(passenger.dateOfBirth) : new Date(1990, 0, 1);
-    return initialDate.getMonth();
-  });
-  const [calendarYear, setCalendarYear] = useState(() => {
-    const initialDate = passenger.dateOfBirth ? new Date(passenger.dateOfBirth) : new Date(1990, 0, 1);
-    return initialDate.getFullYear();
-  });
+  const [showIOSDatePicker, setShowIOSDatePicker] = useState(false);
+  const [iosSelectedDate, setIosSelectedDate] = useState<Date>(
+    passenger.dateOfBirth ? new Date(passenger.dateOfBirth) : new Date(1990, 0, 1),
+  );
+
+  useEffect(() => {
+    if (passenger.dateOfBirth) {
+      setIosSelectedDate(new Date(passenger.dateOfBirth));
+    }
+  }, [passenger.dateOfBirth]);
 
   const formatDate = (date: Date) => date.toISOString().split('T')[0];
-  const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
-  const days = Array.from({ length: daysInMonth }, (_, index) => index + 1);
-  const firstDayOfMonth = new Date(calendarYear, calendarMonth, 1).getDay();
-  const leadingPlaceholders = Array.from({ length: firstDayOfMonth }, (_, index) => `placeholder-${index}`);
-
-  const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: currentYear - 1899 }, (_, index) => `${1900 + index}`).reverse();
 
   const handleDateSelect = (date: Date) => {
-    onChange(passenger.id, 'dateOfBirth', formatDate(date));
-  };
-
-  const openDatePicker = () => {
-    const initialDate = passenger.dateOfBirth ? new Date(passenger.dateOfBirth) : new Date(1990, 0, 1);
-
-    setCalendarMonth(initialDate.getMonth());
-    setCalendarYear(initialDate.getFullYear());
-    setShowDatePicker(true);
-  };
-
-  const handleMonthChange = (delta: number) => {
-    const updatedDate = new Date(calendarYear, calendarMonth + delta, 1);
-    setCalendarMonth(updatedDate.getMonth());
-    setCalendarYear(updatedDate.getFullYear());
-  };
-
-  const handleDaySelect = (day: number) => {
-    const candidateDate = new Date(calendarYear, calendarMonth, day);
     const today = new Date();
+    const safeDate = date > today ? today : date;
+    setIosSelectedDate(safeDate);
+    onChange(passenger.id, 'dateOfBirth', formatDate(safeDate));
+  };
 
-    if (candidateDate > today) {
+  const openNativeDatePicker = () => {
+    const initialDate = passenger.dateOfBirth ? new Date(passenger.dateOfBirth) : new Date(1990, 0, 1);
+    const maximumDate = new Date();
+
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        value: initialDate,
+        mode: 'date',
+        maximumDate,
+        onChange: (event, selectedDate) => {
+          if (event.type === 'set' && selectedDate) {
+            handleDateSelect(selectedDate);
+          }
+        },
+      });
       return;
     }
 
-    handleDateSelect(candidateDate);
-    setShowDatePicker(false);
+    setIosSelectedDate(initialDate);
+    setShowIOSDatePicker(true);
   };
 
   const renderOptionModal = ({
@@ -379,7 +354,7 @@ const PassengerCard = ({
           onChangeText={(text) => onChange(passenger.id, 'phoneNumber', text)}
           keyboardType="phone-pad"
         />
-        <Pressable style={styles.selectInput} onPress={openDatePicker}>
+        <Pressable style={styles.selectInput} onPress={openNativeDatePicker}>
           <Text style={passenger.dateOfBirth ? styles.selectValue : styles.selectPlaceholder}>
             {passenger.dateOfBirth || 'Select date of birth'}
           </Text>
@@ -409,129 +384,33 @@ const PassengerCard = ({
 
       {renderCountryModal()}
 
-      {showDatePicker ? (
-        <Modal transparent animationType="slide" visible={showDatePicker} onRequestClose={() => setShowDatePicker(false)}>
-          <Pressable style={styles.dateModalOverlay} onPress={() => setShowDatePicker(false)}>
-            <Pressable
-              style={styles.dateModalContent}
-              onPress={(event) => event.stopPropagation()}
-            >
-              <View style={styles.calendarHeader}>
-                <Pressable style={styles.monthNavButton} onPress={() => handleMonthChange(-1)}>
-                  <Ionicons name="chevron-back" size={20} color="#0c2047" />
-                </Pressable>
-                <View style={styles.monthYearSelectors}>
-                  <Pressable style={styles.dropdownSelector} onPress={() => setShowMonthSelector((prev) => !prev)}>
-                    <Text style={styles.monthLabel}>{MONTH_NAMES[calendarMonth]}</Text>
-                    <Ionicons name={showMonthSelector ? 'chevron-up' : 'chevron-down'} size={18} color="#0c2047" />
-                  </Pressable>
-                  <Pressable style={styles.dropdownSelector} onPress={() => setShowYearSelector((prev) => !prev)}>
-                    <Text style={styles.monthLabel}>{calendarYear}</Text>
-                    <Ionicons name={showYearSelector ? 'chevron-up' : 'chevron-down'} size={18} color="#0c2047" />
-                  </Pressable>
-                </View>
-                <Pressable style={styles.monthNavButton} onPress={() => handleMonthChange(1)}>
-                  <Ionicons name="chevron-forward" size={20} color="#0c2047" />
-                </Pressable>
-              </View>
-
-              {showMonthSelector ? (
-                <View style={styles.selectorDropdown}>
-                  {MONTH_NAMES.map((month, index) => (
-                    <Pressable
-                      key={month}
-                      style={styles.selectorOption}
-                      onPress={() => {
-                        setCalendarMonth(index);
-                        setShowMonthSelector(false);
-                      }}
-                    >
-                      <Text style={styles.selectorOptionLabel}>{month}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              ) : null}
-
-              {showYearSelector ? (
-                <View style={styles.selectorDropdown}>
-                  <ScrollView style={styles.yearScroll}>
-                    {yearOptions.map((year) => (
-                      <Pressable
-                        key={year}
-                        style={styles.selectorOption}
-                        onPress={() => {
-                          setCalendarYear(Number(year));
-                          setShowYearSelector(false);
-                        }}
-                      >
-                        <Text style={styles.selectorOptionLabel}>{year}</Text>
-                      </Pressable>
-                    ))}
-                  </ScrollView>
-                </View>
-              ) : null}
-
-              <View style={styles.weekdayRow}>
-                {WEEKDAY_ABBREVIATIONS.map((day) => (
-                  <Text key={day} style={styles.weekdayLabel}>
-                    {day}
-                  </Text>
-                ))}
-              </View>
-
-              <View style={styles.calendarGrid}>
-                {leadingPlaceholders.map((placeholder) => (
-                  <View key={placeholder} style={[styles.dayButton, styles.dayButtonEmpty]} />
-                ))}
-                {days.map((day) => {
-                  const candidateDate = new Date(calendarYear, calendarMonth, day);
-                  const formattedDate = formatDate(candidateDate);
-                  const isSelected = passenger.dateOfBirth === formattedDate;
-                  const isDisabled = candidateDate > new Date();
-
-                  return (
-                    <Pressable
-                      key={formattedDate}
-                      style={[
-                        styles.dayButton,
-                        isSelected && styles.dayButtonSelected,
-                        isDisabled && styles.dayButtonDisabled,
-                      ]}
-                      onPress={() => {
-                        if (!isDisabled) {
-                          handleDaySelect(day);
-                        }
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.dayLabel,
-                          isSelected && styles.dayLabelSelected,
-                          isDisabled && styles.dayLabelDisabled,
-                        ]}
-                      >
-                        {day}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
+      {Platform.OS === 'ios' && showIOSDatePicker ? (
+        <Modal transparent animationType="slide" visible onRequestClose={() => setShowIOSDatePicker(false)}>
+          <Pressable style={styles.modalOverlay} onPress={() => setShowIOSDatePicker(false)}>
+            <Pressable style={[styles.modalContent, styles.iosPickerContent]} onPress={(event) => event.stopPropagation()}>
+              <DateTimePicker
+                value={iosSelectedDate}
+                mode="date"
+                display="spinner"
+                maximumDate={new Date()}
+                onChange={(_, selectedDate) => {
+                  if (selectedDate) {
+                    setIosSelectedDate(selectedDate);
+                  }
+                }}
+              />
               <View style={styles.dateModalActions}>
+                <Pressable style={styles.secondaryButton} onPress={() => setShowIOSDatePicker(false)}>
+                  <Text style={styles.secondaryButtonText}>Cancel</Text>
+                </Pressable>
                 <Pressable
-                  style={styles.todayButton}
+                  style={styles.primaryButtonSmall}
                   onPress={() => {
-                    const today = new Date();
-                    setCalendarMonth(today.getMonth());
-                    setCalendarYear(today.getFullYear());
-                    handleDateSelect(today);
-                    setShowDatePicker(false);
+                    handleDateSelect(iosSelectedDate);
+                    setShowIOSDatePicker(false);
                   }}
                 >
-                  <Text style={styles.todayButtonText}>Today</Text>
-                </Pressable>
-                <Pressable style={styles.secondaryButton} onPress={() => setShowDatePicker(false)}>
-                  <Text style={styles.secondaryButtonText}>Close</Text>
+                  <Text style={styles.primaryButtonText}>Confirm</Text>
                 </Pressable>
               </View>
             </Pressable>
@@ -1024,6 +903,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     maxHeight: '70%',
   },
+  iosPickerContent: {
+    paddingHorizontal: 12,
+    gap: 12,
+  },
   optionRow: {
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -1035,124 +918,10 @@ const styles = StyleSheet.create({
     color: '#0c2047',
     fontWeight: '600',
   },
-  dateModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    justifyContent: 'flex-end',
-  },
-  dateModalContent: {
-    backgroundColor: '#ffffff',
-    padding: 16,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-  },
   dateModalActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: 12,
     gap: 12,
-  },
-  calendarHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  monthLabel: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0c2047',
-  },
-  monthNavButton: {
-    padding: 6,
-    borderRadius: 10,
-    backgroundColor: '#f2f4f7',
-  },
-  calendarGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  dayButton: {
-    width: '14.5%',
-    aspectRatio: 1,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f2f4f7',
-  },
-  dayButtonEmpty: {
-    backgroundColor: 'transparent',
-  },
-  dayButtonSelected: {
-    backgroundColor: '#0c2047',
-  },
-  dayButtonDisabled: {
-    backgroundColor: '#eceff3',
-  },
-  dayLabel: {
-    color: '#0c2047',
-    fontWeight: '700',
-  },
-  dayLabelSelected: {
-    color: '#ffffff',
-  },
-  dayLabelDisabled: {
-    color: '#9ba3b4',
-  },
-  weekdayRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  weekdayLabel: {
-    width: '14.5%',
-    textAlign: 'center',
-    color: '#9ba3b4',
-    fontWeight: '700',
-    fontSize: 12,
-  },
-  monthYearSelectors: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  dropdownSelector: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: '#f2f4f7',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  selectorDropdown: {
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e6e8ec',
-    borderRadius: 12,
-    marginBottom: 8,
-    maxHeight: 200,
-  },
-  selectorOption: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-  },
-  selectorOptionLabel: {
-    fontSize: 14,
-    color: '#0c2047',
-  },
-  yearScroll: {
-    maxHeight: 180,
-  },
-  todayButton: {
-    backgroundColor: '#f27805',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  todayButtonText: {
-    color: '#ffffff',
-    fontWeight: '800',
   },
 });
