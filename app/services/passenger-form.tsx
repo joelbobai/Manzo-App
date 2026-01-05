@@ -571,18 +571,19 @@ export default function PassengerFormScreen() {
     const nextParams: Record<string, string> = {
       offerId,
       reservedId,
+
     };
 
-    if (rawFlightParam) {
-      nextParams.flight = rawFlightParam;
+    if (selectedFlight) {
+      nextParams.flight = JSON.stringify(selectedFlight);
     }
 
-    if (rawPayloadParam) {
-      nextParams.payload = rawPayloadParam;
+    if (searchPayload) {
+      nextParams.payload = JSON.stringify(searchPayload);
     }
 
-    if (rawDictionariesParam) {
-      nextParams.dictionaries = rawDictionariesParam;
+    if (dictionaries) {
+       nextParams.dictionaries = JSON.stringify(dictionaries);
     }
 
     if (forms.length) {
