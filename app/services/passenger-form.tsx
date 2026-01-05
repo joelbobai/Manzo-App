@@ -37,7 +37,7 @@ type PassengerField =
   | 'dateOfBirth'
   | 'passportNumber';
 
-type PassengerFormState = {
+export type PassengerFormState = {
   id: string;
   label: string;
   type: 'adult' | 'child' | 'infant';
@@ -568,13 +568,28 @@ export default function PassengerFormScreen() {
         return;
       }
 
-      router.push({
-        pathname: '/overviewAndpayment',
-        params: {
-          offerId,
-          reservedId,
-        },
-      });
+    const nextParams: Record<string, string> = {
+      offerId,
+      reservedId,
+    };
+
+    if (rawFlightParam) {
+      nextParams.flight = rawFlightParam;
+    }
+
+    if (rawPayloadParam) {
+      nextParams.payload = rawPayloadParam;
+    }
+
+    if (rawDictionariesParam) {
+      nextParams.dictionaries = rawDictionariesParam;
+    }
+
+    if (forms.length) {
+      nextParams.passengers = JSON.stringify(forms);
+    }
+
+    router.push({ pathname: '/overviewAndpayment', params: nextParams });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Ticket reservation failed.';
       Alert.alert('Reservation failed', message);
