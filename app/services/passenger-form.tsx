@@ -341,19 +341,22 @@ const PassengerCard = ({
           keyboardType="email-address"
           autoCapitalize="none"
         />
-        <Pressable style={styles.selectInput} onPress={() => setShowCountryModal(true)}>
-          <Text style={passenger.phoneCountryCode ? styles.selectValue : styles.selectPlaceholder}>
-            {passenger.phoneCountryCode ? `+${passenger.phoneCountryCode}` : 'Select country code'}
-          </Text>
-          <Ionicons name="chevron-down" size={18} color="#5c6270" />
-        </Pressable>
-        <TextInput
-          style={styles.input}
-          placeholder="Phone number"
-          value={passenger.phoneNumber}
-          onChangeText={(text) => onChange(passenger.id, 'phoneNumber', text)}
-          keyboardType="phone-pad"
-        />
+        <View style={styles.phoneRow}>
+          <Pressable style={styles.phoneCode} onPress={() => setShowCountryModal(true)}>
+            <Text style={passenger.phoneCountryCode ? styles.selectValue : styles.selectPlaceholder}>
+              {passenger.phoneCountryCode ? `+${passenger.phoneCountryCode}` : 'Code'}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color="#5c6270" />
+          </Pressable>
+          <TextInput
+            style={styles.phoneInput}
+            placeholder="Phone number"
+            value={passenger.phoneNumber}
+            onChangeText={(text) => onChange(passenger.id, 'phoneNumber', text)}
+            keyboardType="phone-pad"
+            placeholderTextColor="#9ba3b4"
+          />
+        </View>
         <Pressable style={styles.selectInput} onPress={openNativeDatePicker}>
           <Text style={passenger.dateOfBirth ? styles.selectValue : styles.selectPlaceholder}>
             {passenger.dateOfBirth || 'Select date of birth'}
@@ -890,6 +893,32 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: '700',
     fontSize: 16,
+  },
+  phoneRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  phoneCode: {
+    backgroundColor: '#ffffff',
+    borderColor: '#d8dde5',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  phoneInput: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderColor: '#d8dde5',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#0c2047',
   },
   modalOverlay: {
     flex: 1,
