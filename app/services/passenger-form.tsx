@@ -15,7 +15,7 @@ import {
   View,
 } from 'react-native';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import type { FlightDictionaries, FlightOffer, FlightSearchPayload, PassengerCounts, FlightSegment } from '@/types/flight';
+import type { FlightDictionaries, FlightOffer, FlightSearchPayload, PassengerCounts } from '@/types/flight';
 import { encryptTicketPayload } from '@/utils/encrypt-ticket';
 import { formatMoney } from './flight-results';
 
@@ -157,39 +157,32 @@ const buildPassengerForms = (counts?: PassengerCounts | null): PassengerFormStat
   return forms;
 };
 
-const formatDateLabel = (value?: string) => {
+const formatDepartureDate = (value?: string) => {
   if (!value) return '--';
 
   const date = new Date(value);
 
-  return `${date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString('en-US', {
+    weekday: 'short',
     month: 'short',
     day: 'numeric',
-  })} • ${date.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  })}`;
+  });
 };
 
-const SegmentRow = ({ segment }: { segment: FlightSegment }) => (
-  <View style={styles.segmentRow}>
-    <View style={styles.segmentCodeBlock}>
-      <Text style={styles.segmentCode}>{segment.departure.iataCode}</Text>
-      <Text style={styles.segmentTime}>{formatDateLabel(segment.departure.at)}</Text>
-    </View>
+const formatPassengerLabel = (counts?: PassengerCounts | null, travelerCount?: number) => {
+  const adults = counts?.adults ?? 0;
+  const children = counts?.children ?? 0;
+  const infants = counts?.infants ?? 0;
 
-    <View style={styles.segmentDivider}>
-      <Ionicons name="airplane" size={18} color="#0c2047" />
-      <Text style={styles.segmentDuration}>to</Text>
-    </View>
+  const parts: string[] = [];
+  if (adults) parts.push(`${adults} Adult${adults > 1 ? 's' : ''}`);
+  if (children) parts.push(`${children} Child${children > 1 ? 'ren' : ''}`);
+  if (infants) parts.push(`${infants} Infant${infants > 1 ? 's' : ''}`);
 
-    <View style={styles.segmentCodeBlock}>
-      <Text style={[styles.segmentCode, styles.alignEnd]}>{segment.arrival.iataCode}</Text>
-      <Text style={[styles.segmentTime, styles.alignEnd]}>{formatDateLabel(segment.arrival.at)}</Text>
-    </View>
-  </View>
-);
+  if (parts.length) return parts.join(', ');
+  if (travelerCount && travelerCount > 0) return `${travelerCount} Adult${travelerCount > 1 ? 's' : ''}`;
+  return 'Passengers';
+};
 
 const PassengerCard = ({
   passenger,
@@ -433,11 +426,19 @@ export default function PassengerFormScreen() {
   const dictionaries = useMemo(() => parseJsonParam<FlightDictionaries>(params.dictionaries), [params.dictionaries]);
   const offerIdParam = useMemo(() => (Array.isArray(params.offerId) ? params.offerId[0] : params.offerId), [params.offerId]);
 
+  const passengerCounts = searchPayload?.passenger;
   const itinerary = selectedFlight?.itineraries?.[0];
   const segments = itinerary?.segments ?? [];
   const firstSegment = segments[0];
   const lastSegment = segments[segments.length - 1];
-  const passengerCounts = searchPayload?.passenger;
+  const passengerLabel = formatPassengerLabel(passengerCounts, selectedFlight?.travelerPricings?.length);
+  const routeLabel = `${firstSegment?.departure.iataCode ?? '--'} → ${lastSegment?.arrival.iataCode ?? '--'}`;
+  const departureLabel = formatDepartureDate(firstSegment?.departure.at);
+  const cabinLabel =
+    selectedFlight?.travelerPricings?.[0]?.fareDetailsBySegment?.[0]?.cabin ?? passengerCounts?.travelClass ?? 'Cabin';
+  const priceLabel = selectedFlight?.price?.grandTotal
+    ? formatMoney(Number(selectedFlight.price.grandTotal), selectedFlight.price.currency)
+    : 'Price unavailable';
 
   const [forms, setForms] = useState<PassengerFormState[]>(() => buildPassengerForms(passengerCounts));
   const [isLoading, setIsLoading] = useState(false);
@@ -588,41 +589,44 @@ export default function PassengerFormScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionEyebrow}>Selected flight</Text>
-          <View style={styles.card}>
+          <View style={[styles.card, styles.bookingCard]}>
             {segments.length > 0 ? (
               <>
-                <View style={styles.routeRow}>
-                  <View>
-                    <Text style={styles.routeLabel}>From</Text>
-                    <Text style={styles.routeValue}>{firstSegment?.departure.iataCode ?? '--'}</Text>
-                  </View>
-                  <Ionicons name="swap-horizontal" size={20} color="#0c2047" />
-                  <View style={styles.alignEnd}>
-                    <Text style={styles.routeLabel}>To</Text>
-                    <Text style={styles.routeValue}>{lastSegment?.arrival.iataCode ?? '--'}</Text>
+                <View style={styles.bookingHeader}>
+                  <Text style={styles.bookingTitle}>Booking Summary</Text>
+                  <View style={[styles.pill, styles.pillAccent]}>
+                    <Text style={[styles.pillText, styles.pillAccentText]}>{passengerLabel.toUpperCase()}</Text>
                   </View>
                 </View>
 
-                <View style={styles.separator} />
+                <View style={[styles.pill, styles.pillMuted]}>
+                  <Text style={[styles.pillText, styles.pillMutedText]}>{passengerLabel}</Text>
+                </View>
 
-                {segments.map((segment) => (
-                  <SegmentRow key={`${segment.carrierCode}-${segment.number}-${segment.id}`} segment={segment} />
-                ))}
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Route</Text>
+                  <Text style={styles.summaryValue}>{routeLabel}</Text>
+                </View>
 
-                <View style={styles.priceRow}>
-                  <View style={styles.priceChip}>
-                    <Ionicons name="briefcase-outline" size={16} color="#0c2047" />
-                    <Text style={styles.priceChipText}>
-                      {selectedFlight?.travelerPricings?.[0]?.fareDetailsBySegment?.[0]?.cabin ??
-                        passengerCounts?.travelClass ??
-                        'Cabin'}
-                    </Text>
-                  </View>
-                  <Text style={styles.priceValue}>
-                    {selectedFlight?.price?.grandTotal
-                      ? formatMoney(Number(selectedFlight.price.grandTotal), selectedFlight.price.currency)
-                      : 'Price unavailable'}
-                  </Text>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Departure</Text>
+                  <Text style={styles.summaryValue}>{departureLabel}</Text>
+                </View>
+
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>Cabin</Text>
+                  <Text style={styles.summaryValue}>{cabinLabel.toUpperCase()}</Text>
+                </View>
+
+                <View style={styles.farePill}>
+                  <Text style={styles.farePassenger}>{passengerLabel}</Text>
+                  <Text style={styles.farePrice}>{priceLabel}</Text>
+                </View>
+
+                <View style={styles.totalBox}>
+                  <Text style={styles.totalLabel}>Total price</Text>
+                  <Text style={styles.totalValue}>{priceLabel}</Text>
+                  <Text style={styles.totalHint}>Taxes and fees are included in the displayed amount.</Text>
                 </View>
               </>
             ) : (
@@ -703,9 +707,9 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 14,
-    gap: 12,
+    borderRadius: 18,
+    padding: 16,
+    gap: 14,
     shadowColor: '#0c2047',
     shadowOpacity: 0.06,
     shadowRadius: 10,
@@ -714,78 +718,109 @@ const styles = StyleSheet.create({
   cardGap: {
     gap: 16,
   },
-  routeRow: {
+  bookingCard: {
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    gap: 16,
+  },
+  bookingHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  routeLabel: {
-    color: '#5c6270',
-    fontSize: 13,
-  },
-  routeValue: {
-    color: '#0c2047',
-    fontSize: 20,
-    fontWeight: '800',
-    marginTop: 2,
-  },
-  separator: {
-    height: 1,
-    backgroundColor: '#e6e8ec',
-  },
-  segmentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  segmentCodeBlock: {
-    flex: 1,
-  },
-  segmentCode: {
+  bookingTitle: {
     fontSize: 18,
+    fontWeight: '800',
+    color: '#0c2047',
+  },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    alignSelf: 'flex-start',
+  },
+  pillText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  pillAccent: {
+    backgroundColor: '#fff4ed',
+    borderWidth: 1,
+    borderColor: '#ffcfa8',
+  },
+  pillAccentText: {
+    color: '#d9570d',
+  },
+  pillMuted: {
+    backgroundColor: '#eef2f7',
+    borderWidth: 1,
+    borderColor: '#dfe6f1',
+  },
+  pillMutedText: {
+    color: '#5c6270',
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  summaryLabel: {
+    color: '#6b7280',
+    fontSize: 14,
+  },
+  summaryValue: {
+    fontSize: 15,
     color: '#0c2047',
     fontWeight: '700',
   },
-  segmentTime: {
-    color: '#5c6270',
-    fontSize: 13,
-    marginTop: 2,
-  },
-  segmentDivider: {
-    width: 64,
-    alignItems: 'center',
-    gap: 4,
-  },
-  segmentDuration: {
-    fontSize: 12,
-    color: '#5c6270',
-  },
-  alignEnd: {
-    alignItems: 'flex-end',
-  },
-  priceRow: {
+  farePill: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 4,
+    backgroundColor: '#f5f7fb',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#e6e8ef',
   },
-  priceChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#f2f4f7',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  priceChipText: {
+  farePassenger: {
+    color: '#5c6270',
+    fontSize: 14,
     fontWeight: '600',
-    color: '#0c2047',
   },
-  priceValue: {
-    fontSize: 18,
+  farePrice: {
+    color: '#0c2047',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  totalBox: {
+    marginTop: 4,
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: '#fff7ed',
+    borderWidth: 1,
+    borderColor: '#ffe3c7',
+    gap: 6,
+  },
+  totalLabel: {
+    textTransform: 'uppercase',
+    fontSize: 12,
+    color: '#d65f0b',
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  totalValue: {
+    fontSize: 22,
     fontWeight: '800',
     color: '#0c2047',
+  },
+  totalHint: {
+    color: '#7b8292',
+    fontSize: 12,
+    lineHeight: 16,
   },
   emptyState: {
     flexDirection: 'row',
