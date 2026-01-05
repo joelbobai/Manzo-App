@@ -560,26 +560,53 @@ export default function OverviewAndPaymentScreen() {
 
       <View style={styles.section}>
         <Text style={styles.sectionEyebrow}>Payment summary</Text>
-        <View style={styles.card}>
-          <Text style={styles.sectionSubtitle}>
-            All fares include applicable taxes and service fees. Add-ons will be included once selected.
-          </Text>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Base fare</Text>
-            <Text style={styles.summaryValue}>{formatMoney(Number.isFinite(baseFare) ? baseFare : 0, currency)}</Text>
+        <View style={[styles.card, styles.paymentCard]}>
+          <View style={styles.summaryHeaderRow}>
+            <View style={styles.summaryIntro}>
+              <Text style={styles.sectionSubtitle}>
+                All fares include applicable taxes and service fees. Add-ons will be included once selected.
+              </Text>
+              <View style={styles.secureChip}>
+                <Ionicons name="shield-checkmark-outline" size={16} color="#0c2047" />
+                <Text style={styles.secureChipText}>Secure checkout</Text>
+              </View>
+            </View>
+            <View style={styles.summaryTotalBadge}>
+              <Text style={styles.summaryTotalLabel}>Total due today</Text>
+              <Text style={styles.summaryTotalValue}>{formatMoney(totalWithFees, currency)}</Text>
+              <Text style={styles.summaryLockText}>Price guaranteed through completion</Text>
+            </View>
           </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Taxes & fees</Text>
-            <Text style={styles.summaryValue}>{formatMoney(Number.isFinite(taxes) ? taxes : 0, currency)}</Text>
+
+          <View style={styles.summaryGrid}>
+            <View style={styles.summaryStat}>
+              <Text style={styles.summaryStatLabel}>Base fare</Text>
+              <Text style={styles.summaryStatValue}>{formatMoney(Number.isFinite(baseFare) ? baseFare : 0, currency)}</Text>
+              <Text style={styles.summaryStatHint}>Travelers combined</Text>
+            </View>
+            <View style={styles.summaryStat}>
+              <Text style={styles.summaryStatLabel}>Taxes & fees</Text>
+              <Text style={styles.summaryStatValue}>{formatMoney(Number.isFinite(taxes) ? taxes : 0, currency)}</Text>
+              <Text style={styles.summaryStatHint}>Airport & government</Text>
+            </View>
+            <View style={[styles.summaryStat, styles.summaryStatAccent]}>
+              <Text style={[styles.summaryStatLabel, styles.summaryStatAccentText]}>Service fee</Text>
+              <Text style={[styles.summaryStatValue, styles.summaryStatAccentText]}>{formatMoney(serviceFee, currency)}</Text>
+              <Text style={[styles.summaryStatHint, styles.summaryStatAccentText]}>Support & processing</Text>
+            </View>
           </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Service fee</Text>
-            <Text style={[styles.summaryValue, styles.summaryHighlight]}>{formatMoney(serviceFee, currency)}</Text>
+
+          <View style={styles.summaryAssuranceList}>
+            <View style={styles.assuranceRow}>
+              <Ionicons name="mail-unread-outline" size={16} color="#0c2047" />
+              <Text style={styles.assuranceText}>Instant email receipt and itinerary after payment.</Text>
+            </View>
+            <View style={styles.assuranceRow}>
+              <Ionicons name="document-text-outline" size={16} color="#0c2047" />
+              <Text style={styles.assuranceText}>Full breakdown shown before you confirm your charge.</Text>
+            </View>
           </View>
-          <View style={[styles.summaryRow, styles.summaryTotal]}>
-            <Text style={styles.summaryTotalLabel}>Total due today</Text>
-            <Text style={styles.summaryTotalValue}>{formatMoney(totalWithFees, currency)}</Text>
-          </View>
+
           <Pressable
             style={[styles.primaryButton, (isProcessing || !selectedFlight || !reservedId) && styles.primaryButtonDisabled]}
             onPress={handleIssueTickets}
@@ -858,6 +885,49 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 15,
   },
+  paymentCard: {
+    gap: 18,
+  },
+  summaryHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 14,
+    alignItems: 'flex-start',
+  },
+  summaryIntro: {
+    flex: 1,
+    gap: 12,
+  },
+  secureChip: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#eef5ff',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#d7e5ff',
+  },
+  secureChipText: {
+    color: '#0c2047',
+    fontWeight: '700',
+    fontSize: 12,
+    letterSpacing: 0.2,
+  },
+  summaryTotalBadge: {
+    minWidth: 160,
+    backgroundColor: '#0c2047',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 6,
+  },
+  summaryLockText: {
+    color: '#c5d4f5',
+    fontSize: 12,
+  },
   summaryHighlight: {
     color: '#d9570d',
   },
@@ -878,6 +948,60 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '800',
     color: '#0c2047',
+  },
+  summaryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  summaryStat: {
+    flex: 1,
+    minWidth: 160,
+    backgroundColor: '#f5f7fb',
+    borderRadius: 12,
+    padding: 12,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#e6e8ec',
+  },
+  summaryStatLabel: {
+    color: '#5c6270',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    fontSize: 12,
+    letterSpacing: 0.3,
+  },
+  summaryStatValue: {
+    color: '#0c2047',
+    fontWeight: '800',
+    fontSize: 18,
+  },
+  summaryStatHint: {
+    color: '#9ba3b4',
+    fontSize: 12,
+  },
+  summaryStatAccent: {
+    backgroundColor: '#fff4ed',
+    borderColor: '#ffd7be',
+  },
+  summaryStatAccentText: {
+    color: '#d65f0b',
+  },
+  summaryAssuranceList: {
+    gap: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#eef2f7',
+    paddingTop: 12,
+  },
+  assuranceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  assuranceText: {
+    color: '#3b4254',
+    fontSize: 13,
+    flex: 1,
   },
   primaryButton: {
     marginTop: 14,
