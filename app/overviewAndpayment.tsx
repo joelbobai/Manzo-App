@@ -13,7 +13,7 @@ import { encryptTicketPayload } from '@/utils/encrypt-ticket';
 import { getAirportLocation, getCountryByIATA } from '@/utils/getCountryByIATA';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { PaystackProvider, usePaystack } from 'react-native-paystack-webview';
 import { formatMoney } from './services/flight-results';
@@ -283,8 +283,7 @@ const formatPassengersForTicketing = (passengers: PassengerRow[]) =>
   });
 
 function OverviewAndPaymentContent() {
-  const { popup} = usePaystack();
-    const paystackPublicKey = resolvePaystackPublicKey();
+  const { popup } = usePaystack();
   const router = useRouter();
   const params = useLocalSearchParams<OverviewParams>();
   const { airports } = useAirports();
@@ -295,7 +294,6 @@ function OverviewAndPaymentContent() {
   const [paystackConfig, setPaystackConfig] = useState<PaystackPaymentConfig | null>(null);
   const [pendingTicketFlight, setPendingTicketFlight] = useState<FlightOffer | null>(null);
   const [pendingReference, setPendingReference] = useState<string | null>(null);
-  const paystackWebViewRef = useRef<any>(null);
 
   const reservedId = useMemo(() => (Array.isArray(params.reservedId) ? params.reservedId[0] : params.reservedId), [params.reservedId]);
   const offerId = useMemo(() => (Array.isArray(params.offerId) ? params.offerId[0] : params.offerId), [params.offerId]);
@@ -346,6 +344,38 @@ function OverviewAndPaymentContent() {
 
   const travelers = useMemo(() => formatPassengersForTicketing(passengerRows), [passengerRows]);
 
+  const launchPaystackTransaction = (config: PaystackPaymentConfig) => {
+    if (!popup?.newTransaction) {
+      setStatusMessage('Unable to open Paystack. Please try again.');
+      setStatusTone('error');
+      setIsProcessing(false);
+      return;
+    }
+
+    try {
+      popup.newTransaction({
+        email: config.email,
+        amount: config.amount,
+        currency: config.currency,
+        metadata: config.metadata,
+        onSuccess: handlePaystackSuccess,
+        onCancel: handlePaystackCancel,
+        onError: (error: unknown) => {
+          console.error('Paystack returned an error', error);
+          console.log('Paystack error', error);
+          setStatusMessage('Unable to open Paystack. Please try again.');
+          setStatusTone('error');
+          setIsProcessing(false);
+        },
+      });
+    } catch (error) {
+      console.error('Unable to initialize Paystack', error);
+      setStatusMessage('Unable to open Paystack. Please try again.');
+      setStatusTone('error');
+      setIsProcessing(false);
+    }
+  };
+
   const handleIssueTickets = async () => {
     if (!selectedFlight) {
       Alert.alert('Missing flight', 'Please return to the passenger form and pick a flight again.');
@@ -369,9 +399,10 @@ function OverviewAndPaymentContent() {
       return;
     }
 
-    const publicKey =   process.env.EXPO_PUBLIC_ENV === "production"
-          ? process.env.EXPO_PUBLIC_PAYSTACK_PUBLIC_LIVE_KEY
-          : process.env.EXPO_PUBLIC_PAYSTACK_PUBLIC_TEST_KEY ?? '';
+    const publicKey =
+      process.env.EXPO_PUBLIC_ENV === 'production'
+        ? process.env.EXPO_PUBLIC_PAYSTACK_PUBLIC_LIVE_KEY
+        : process.env.EXPO_PUBLIC_PAYSTACK_PUBLIC_TEST_KEY ?? '';
 
     if (!publicKey) {
       Alert.alert(
@@ -480,25 +511,18 @@ function OverviewAndPaymentContent() {
       currency,
     };
 
-    setPendingTicketFlight(flightForPayment);
-    setPendingReference(reference);
-    setPaystackConfig({
+    const config: PaystackPaymentConfig = {
       amount: amountInMinorUnits,
       currency,
       email: primaryPassenger.email.trim(),
       reference,
       metadata,
-    });
+    };
 
-    setTimeout(() => {
-      if (paystackWebViewRef.current?.startTransaction) {
-        paystackWebViewRef.current.startTransaction();
-      } else {
-        setStatusMessage('Unable to open Paystack. Please try again.');
-        setStatusTone('error');
-        setIsProcessing(false);
-      }
-    }, 150);
+    setPendingTicketFlight(flightForPayment);
+    setPendingReference(reference);
+    setPaystackConfig(config);
+    launchPaystackTransaction(config);
   };
 
   const issueTickets = async (transactionReference?: string | null, transactionResponse?: unknown) => {
