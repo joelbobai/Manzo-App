@@ -13,9 +13,9 @@ import { encryptTicketPayload } from '@/utils/encrypt-ticket';
 import { getAirportLocation, getCountryByIATA } from '@/utils/getCountryByIATA';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { PaystackProvider, usePaystack } from 'react-native-paystack-webview';
+import { Paystack, PaystackProvider } from 'react-native-paystack-webview';
 import { formatMoney } from './services/flight-results';
 import type { PassengerFormState } from './services/passenger-form';
 
@@ -29,6 +29,13 @@ type OverviewParams = {
 };
 
 type PassengerRow = PassengerFormState & { fullName: string };
+type PaystackPaymentConfig = {
+  email: string;
+  amount: number;
+  currency: string;
+  reference: string;
+  metadata?: Record<string, unknown>;
+};
 
 const FALLBACK_PURCHASE_CONDITIONS = [
   'Tickets may be non-refundable depending on the fare class selected.',
@@ -265,13 +272,16 @@ const formatPassengersForTicketing = (passengers: PassengerRow[]) =>
 
 function OverviewAndPaymentContent() {
   const router = useRouter();
-  const { popup } = usePaystack();
   const params = useLocalSearchParams<OverviewParams>();
   const { airports } = useAirports();
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusTone, setStatusTone] = useState<'info' | 'success' | 'error'>('info');
   const [isProcessing, setIsProcessing] = useState(false);
   const [pricedFlight, setPricedFlight] = useState<FlightOffer | null>(null);
+  const [paystackConfig, setPaystackConfig] = useState<PaystackPaymentConfig | null>(null);
+  const [pendingTicketFlight, setPendingTicketFlight] = useState<FlightOffer | null>(null);
+  const [pendingReference, setPendingReference] = useState<string | null>(null);
+  const paystackWebViewRef = useRef<any>(null);
 
   const reservedId = useMemo(() => (Array.isArray(params.reservedId) ? params.reservedId[0] : params.reservedId), [params.reservedId]);
   const offerId = useMemo(() => (Array.isArray(params.offerId) ? params.offerId[0] : params.offerId), [params.offerId]);
@@ -310,7 +320,7 @@ function OverviewAndPaymentContent() {
       if (rule.notApplicable) parts.push('Not applicable');
       return parts.join(' • ') || 'Fare rule';
     });
-  }, [selectedFlight?.fareRules?.rules]);
+  }, [pricedFlight?.fareRules?.rules, selectedFlight?.fareRules?.rules]);
 
   const priceSource = pricedFlight ?? selectedFlight;
   const currency = priceSource?.price?.currency ?? searchPayload?.currencyCode ?? 'NGN';
@@ -338,6 +348,23 @@ function OverviewAndPaymentContent() {
       return;
     }
 
+    const primaryPassenger = passengerRows.find((passenger) => passenger.email?.includes('@'));
+
+    if (!primaryPassenger?.email) {
+      Alert.alert('Missing email', 'Add at least one passenger email before continuing to payment.');
+      return;
+    }
+
+    const publicKey = process.env.EXPO_PUBLIC_PAYSTACK_PUBLIC_KEY ?? '';
+
+    if (!publicKey) {
+      Alert.alert(
+        'Payment unavailable',
+        'Paystack is not configured. Please set EXPO_PUBLIC_PAYSTACK_PUBLIC_KEY to continue.',
+      );
+      return;
+    }
+
     const secretKey = process.env.EXPO_PUBLIC_SECRET_KEY || '';
 
     if (!secretKey) {
@@ -349,7 +376,7 @@ function OverviewAndPaymentContent() {
     }
 
     setIsProcessing(true);
-    setStatusMessage('Checking the latest fare before issuing tickets…');
+    setStatusMessage('Checking the latest fare before launching payment…');
     setStatusTone('info');
 
     let confirmedFlight: FlightOffer | null = null;
@@ -400,7 +427,7 @@ function OverviewAndPaymentContent() {
       }
 
       setPricedFlight(confirmedFlight);
-      setStatusMessage('Fare confirmed. Issuing tickets…');
+      setStatusMessage('Fare confirmed. Launching Paystack checkout…');
       setStatusTone('info');
     } catch (error) {
       const message =
@@ -412,16 +439,102 @@ function OverviewAndPaymentContent() {
       return;
     }
 
+    const flightForPayment = confirmedFlight ?? selectedFlight;
+    const totalFare = Number(
+      flightForPayment.price?.grandTotal ?? flightForPayment.price?.total ?? flightForPayment.price?.base ?? 0,
+    );
+    const totalWithFees = (Number.isFinite(totalFare) ? totalFare : 0) + serviceFee;
+
+    if (!Number.isFinite(totalWithFees) || totalWithFees <= 0) {
+      const message = 'The verified amount is invalid. Please try again.';
+      Alert.alert('Payment unavailable', message);
+      setStatusMessage(message);
+      setStatusTone('error');
+      setIsProcessing(false);
+      return;
+    }
+
+    const amountInMinorUnits = Math.round(totalWithFees * 100);
+    const reference = `MANZO-${Date.now()}`;
+    const metadata = {
+      passengers: passengerRows,
+      offerId: flightForPayment.id,
+      reservedId,
+      amount: totalWithFees,
+      currency,
+    };
+
+    setPendingTicketFlight(flightForPayment);
+    setPendingReference(reference);
+    setPaystackConfig({
+      amount: amountInMinorUnits,
+      currency,
+      email: primaryPassenger.email.trim(),
+      reference,
+      metadata,
+    });
+
+    setTimeout(() => {
+      if (paystackWebViewRef.current?.startTransaction) {
+        paystackWebViewRef.current.startTransaction();
+      } else {
+        setStatusMessage('Unable to open Paystack. Please try again.');
+        setStatusTone('error');
+        setIsProcessing(false);
+      }
+    }, 150);
+  };
+
+  const issueTickets = async (transactionReference?: string | null, transactionResponse?: unknown) => {
+    const flight = pendingTicketFlight ?? pricedFlight ?? selectedFlight;
+
+    if (!flight) {
+      const message = 'We could not find a flight to issue tickets for. Please try again.';
+      Alert.alert('Ticket issuance failed', message);
+      setStatusMessage(message);
+      setStatusTone('error');
+      setIsProcessing(false);
+      return;
+    }
+
+    if (!reservedId) {
+      const message = 'Reservation ID is missing. Please restart the booking process.';
+      Alert.alert('Ticket issuance failed', message);
+      setStatusMessage(message);
+      setStatusTone('error');
+      setIsProcessing(false);
+      return;
+    }
+
+    const secretKey = process.env.EXPO_PUBLIC_SECRET_KEY || '';
+
+    if (!secretKey) {
+      Alert.alert(
+        'Payment unavailable',
+        'Ticket issuance secret key is not configured. Please set EXPO_PUBLIC_SECRET_KEY to continue.',
+      );
+      setIsProcessing(false);
+      return;
+    }
+
+    const flightPrice = Number(flight.price?.grandTotal ?? flight.price?.total ?? flight.price?.base ?? 0);
+    const amountWithFees = (Number.isFinite(flightPrice) ? flightPrice : 0) + serviceFee;
+
     const payload = {
-      flight: confirmedFlight ?? selectedFlight,
+      flight,
       travelers,
       reservedId,
+      transactionReference: transactionReference ?? undefined,
+      transactionResponse,
       littelFlightInfo: [
         {
           passengerSummary: passengerRows,
           searchPayload,
           selectedExtraIds: [],
           dictionaries,
+          transactionReference,
+          amount: amountWithFees,
+          currency,
         },
       ],
     };
@@ -434,11 +547,13 @@ function OverviewAndPaymentContent() {
       const message =
         error instanceof Error ? error.message : 'We could not prepare your passenger details for submission.';
       Alert.alert('Ticket issuance failed', message);
+      setStatusMessage(message);
+      setStatusTone('error');
       setIsProcessing(false);
       return;
     }
 
-    setStatusMessage('Processing payment and issuing tickets…');
+    setStatusMessage('Payment confirmed. Issuing your tickets…');
     setStatusTone('info');
 
     try {
@@ -469,8 +584,35 @@ function OverviewAndPaymentContent() {
       setStatusTone('error');
       Alert.alert('Ticket issuance failed', message);
     } finally {
+      setPaystackConfig(null);
+      setPendingReference(null);
+      setPendingTicketFlight(null);
       setIsProcessing(false);
     }
+  };
+
+  const extractPaystackReference = (response: any) => {
+    if (typeof response?.transactionRef?.reference === 'string') return response.transactionRef.reference;
+    if (typeof response?.data?.reference === 'string') return response.data.reference;
+    if (typeof response?.reference === 'string') return response.reference;
+    if (typeof response?.trxref === 'string') return response.trxref;
+    return null;
+  };
+
+  const handlePaystackSuccess = async (response: unknown) => {
+    setStatusMessage('Payment confirmed. Finalizing your booking…');
+    setStatusTone('info');
+    const reference = extractPaystackReference(response) ?? pendingReference ?? paystackConfig?.reference ?? null;
+    await issueTickets(reference, response);
+  };
+
+  const handlePaystackCancel = () => {
+    setStatusMessage('Payment was cancelled before completion.');
+    setStatusTone('error');
+    setPaystackConfig(null);
+    setPendingReference(null);
+    setPendingTicketFlight(null);
+    setIsProcessing(false);
   };
 
   const activeItineraries = selectedFlight?.itineraries ?? [];
@@ -709,6 +851,24 @@ function OverviewAndPaymentContent() {
           ))}
         </View>
       </View>
+
+      {paystackConfig ? (
+        <Paystack
+          paystackKey={process.env.EXPO_PUBLIC_PAYSTACK_PUBLIC_KEY ?? ''}
+          billingEmail={paystackConfig.email}
+          amount={paystackConfig.amount}
+          currency={paystackConfig.currency}
+          refNumber={paystackConfig.reference}
+          reference={paystackConfig.reference}
+          metadata={paystackConfig.metadata}
+          channels={PAYSTACK_CHANNELS as unknown as string[]}
+          onCancel={handlePaystackCancel}
+          onSuccess={handlePaystackSuccess}
+          ref={paystackWebViewRef}
+          autoStart
+          activityIndicatorColor="#d9570d"
+        />
+      ) : null}
     </ScrollView>
   );
 }
