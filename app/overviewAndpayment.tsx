@@ -15,7 +15,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Paystack from 'react-native-paystack-webview';
+import { PaystackProvider, usePaystack } from 'react-native-paystack-webview';
 import { formatMoney } from './services/flight-results';
 import type { PassengerFormState } from './services/passenger-form';
 
@@ -283,7 +283,8 @@ const formatPassengersForTicketing = (passengers: PassengerRow[]) =>
   });
 
 function OverviewAndPaymentContent() {
-  const paystackPublicKey = resolvePaystackPublicKey();
+  const { popup} = usePaystack();
+    const paystackPublicKey = resolvePaystackPublicKey();
   const router = useRouter();
   const params = useLocalSearchParams<OverviewParams>();
   const { airports } = useAirports();
@@ -368,7 +369,9 @@ function OverviewAndPaymentContent() {
       return;
     }
 
-    const publicKey = paystackPublicKey;
+    const publicKey =   process.env.EXPO_PUBLIC_ENV === "production"
+          ? process.env.EXPO_PUBLIC_PAYSTACK_PUBLIC_LIVE_KEY
+          : process.env.EXPO_PUBLIC_PAYSTACK_PUBLIC_TEST_KEY ?? '';
 
     if (!publicKey) {
       Alert.alert(
@@ -640,6 +643,33 @@ function OverviewAndPaymentContent() {
     return parts.join(' • ') || 'Passengers';
   }, [searchPayload?.passenger]);
 
+
+
+
+  // {paystackConfig ? (
+  //       <Paystack
+  //         paystackKey={process.env.EXPO_PUBLIC_ENV === "production"
+  //         ? process.env.EXPO_PUBLIC_PAYSTACK_PUBLIC_LIVE_KEY
+  //         : process.env.EXPO_PUBLIC_PAYSTACK_PUBLIC_TEST_KEY ?? ''}
+  //         billingEmail={paystackConfig.email}
+  //         amount={paystackConfig.amount}
+  //         currency={paystackConfig.currency}
+  //         refNumber={paystackConfig.reference}
+  //         reference={paystackConfig.reference}
+  //         metadata={paystackConfig.metadata}
+  //         channels={PAYSTACK_CHANNELS as unknown as string[]}
+  //         onCancel={handlePaystackCancel}
+  //         onSuccess={handlePaystackSuccess}
+  //         ref={paystackWebViewRef}
+  //         autoStart
+  //         activityIndicatorColor="#d9570d"
+  //       />
+  //     ) : null}
+
+
+
+
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.topBar}>
@@ -865,36 +895,23 @@ function OverviewAndPaymentContent() {
         </View>
       </View>
 
-      {paystackConfig ? (
-        <Paystack
-          paystackKey={paystackPublicKey}
-          billingEmail={paystackConfig.email}
-          amount={paystackConfig.amount}
-          currency={paystackConfig.currency}
-          refNumber={paystackConfig.reference}
-          reference={paystackConfig.reference}
-          metadata={paystackConfig.metadata}
-          channels={PAYSTACK_CHANNELS as unknown as string[]}
-          onCancel={handlePaystackCancel}
-          onSuccess={handlePaystackSuccess}
-          ref={paystackWebViewRef}
-          autoStart
-          activityIndicatorColor="#d9570d"
-        />
-      ) : null}
+    
     </ScrollView>
   );
 }
 
 export default function OverviewAndPaymentScreen() {
-  const publicKey = resolvePaystackPublicKey();
+    const publicKey = resolvePaystackPublicKey();
+  // const publicKey = process.env.EXPO_PUBLIC_PAYSTACK_PUBLIC_KEY ?? '';
 
   if (!publicKey) {
     console.warn('Paystack public key is not configured. Please set EXPO_PUBLIC_PAYSTACK_PUBLIC_KEY.');
   }
 
   return (
-    <OverviewAndPaymentContent />
+    <PaystackProvider publicKey={publicKey} currency="GHS" defaultChannels={PAYSTACK_CHANNELS} debug>
+      <OverviewAndPaymentContent />
+    </PaystackProvider>
   );
 }
 
