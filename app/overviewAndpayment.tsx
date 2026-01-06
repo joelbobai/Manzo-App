@@ -15,6 +15,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { PaystackProvider, usePaystack } from 'react-native-paystack-webview';
 import { formatMoney } from './services/flight-results';
 import type { PassengerFormState } from './services/passenger-form';
 
@@ -262,6 +263,7 @@ const formatPassengersForTicketing = (passengers: PassengerRow[]) =>
 
 export default function OverviewAndPaymentScreen() {
   const router = useRouter();
+  const { popup } = usePaystack();
   const params = useLocalSearchParams<OverviewParams>();
   const { airports } = useAirports();
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -482,6 +484,12 @@ export default function OverviewAndPaymentScreen() {
   }, [searchPayload?.passenger]);
 
   return (
+    <PaystackProvider
+    publicKey=''
+    currency='GHS'
+    defaultChannels={["card","bank_transfer", "ussd", "mobile_money"]}
+    debug
+    >
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.topBar}>
         <Pressable style={styles.topIcon} onPress={() => router.back()}>
@@ -706,6 +714,7 @@ export default function OverviewAndPaymentScreen() {
         </View>
       </View>
     </ScrollView>
+    </PaystackProvider>
   );
 }
 
