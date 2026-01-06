@@ -37,6 +37,8 @@ const FALLBACK_PURCHASE_CONDITIONS = [
   'Check the baggage allowance for each traveler before departure.',
 ];
 
+const PAYSTACK_CHANNELS = ['card', 'bank_transfer', 'ussd', 'mobile_money'] as const;
+
 const PRICE_CHECK_ENDPOINT = 'https://manzo-be.onrender.com/api/v1/flights/flightPriceLookup';
 const TICKET_ISSUANCE_ENDPOINT = 'https://manzo-be.onrender.com/api/v1/flights/issueTicket';
 
@@ -261,7 +263,7 @@ const formatPassengersForTicketing = (passengers: PassengerRow[]) =>
     return traveler;
   });
 
-export default function OverviewAndPaymentScreen() {
+function OverviewAndPaymentContent() {
   const router = useRouter();
   const { popup } = usePaystack();
   const params = useLocalSearchParams<OverviewParams>();
@@ -484,12 +486,6 @@ export default function OverviewAndPaymentScreen() {
   }, [searchPayload?.passenger]);
 
   return (
-    <PaystackProvider
-    publicKey=''
-    currency='GHS'
-    defaultChannels={["card","bank_transfer", "ussd", "mobile_money"]}
-    debug
-    >
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.topBar}>
         <Pressable style={styles.topIcon} onPress={() => router.back()}>
@@ -714,6 +710,19 @@ export default function OverviewAndPaymentScreen() {
         </View>
       </View>
     </ScrollView>
+  );
+}
+
+export default function OverviewAndPaymentScreen() {
+  const publicKey = process.env.EXPO_PUBLIC_PAYSTACK_PUBLIC_KEY ?? '';
+
+  if (!publicKey) {
+    console.warn('Paystack public key is not configured. Please set EXPO_PUBLIC_PAYSTACK_PUBLIC_KEY.');
+  }
+
+  return (
+    <PaystackProvider publicKey={publicKey} currency="GHS" defaultChannels={PAYSTACK_CHANNELS} debug>
+      <OverviewAndPaymentContent />
     </PaystackProvider>
   );
 }
