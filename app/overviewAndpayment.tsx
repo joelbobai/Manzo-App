@@ -46,8 +46,8 @@ const FALLBACK_PURCHASE_CONDITIONS = [
 
 const PAYSTACK_CHANNELS = ['card', 'bank_transfer', 'ussd', 'mobile_money'] as const;
 
-const PRICE_CHECK_ENDPOINT = 'https://manzo-be.onrender.com/api/v1/flights/flightPriceLookup';
-const TICKET_ISSUANCE_ENDPOINT = 'https://manzo-be.onrender.com/api/v1/flights/issueTicket';
+const PRICE_CHECK_ENDPOINT = 'http://192.168.0.135:3800/api/v1/flights/flightPriceLookup';
+const TICKET_ISSUANCE_ENDPOINT = 'http://192.168.0.135:3800/api/v1/flights/issueTicket';
 
 const parseJsonParam = <T,>(value?: string | string[]): T | null => {
   const rawValue = Array.isArray(value) ? value[0] : value;
@@ -355,7 +355,9 @@ function OverviewAndPaymentContent() {
       return;
     }
 
-    const publicKey = process.env.EXPO_PUBLIC_PAYSTACK_PUBLIC_KEY ?? '';
+    const publicKey =   process.env.EXPO_PUBLIC_ENV === "production"
+          ? process.env.EXPO_PUBLIC_PAYSTACK_PUBLIC_LIVE_KEY
+          : process.env.EXPO_PUBLIC_PAYSTACK_PUBLIC_TEST_KEY ?? '';
 
     if (!publicKey) {
       Alert.alert(
@@ -854,7 +856,9 @@ function OverviewAndPaymentContent() {
 
       {paystackConfig ? (
         <Paystack
-          paystackKey={process.env.EXPO_PUBLIC_PAYSTACK_PUBLIC_KEY ?? ''}
+          paystackKey={process.env.EXPO_PUBLIC_ENV === "production"
+          ? process.env.EXPO_PUBLIC_PAYSTACK_PUBLIC_LIVE_KEY
+          : process.env.EXPO_PUBLIC_PAYSTACK_PUBLIC_TEST_KEY ?? ''}
           billingEmail={paystackConfig.email}
           amount={paystackConfig.amount}
           currency={paystackConfig.currency}
