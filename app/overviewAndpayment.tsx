@@ -1,5 +1,14 @@
 import { useAirports } from '@/hooks/useAirports';
-import type { FlightDictionaries, FlightOffer, FlightSearchPayload, FlightSegment, PassengerCounts, TravelerPricingDetail } from '@/types/flight';
+import type {
+  FlightDictionaries,
+  FlightOffer,
+  FlightPriceCheckPayload,
+  FlightPriceCheckResponse,
+  FlightSearchPayload,
+  FlightSegment,
+  PassengerCounts,
+  TravelerPricingDetail,
+} from '@/types/flight';
 import { encryptTicketPayload } from '@/utils/encrypt-ticket';
 import { getAirportLocation, getCountryByIATA } from '@/utils/getCountryByIATA';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -27,6 +36,7 @@ const FALLBACK_PURCHASE_CONDITIONS = [
   'Check the baggage allowance for each traveler before departure.',
 ];
 
+const PRICE_CHECK_ENDPOINT = 'https://manzo-be.onrender.com/api/v1/flights/flightPriceLookup';
 const TICKET_ISSUANCE_ENDPOINT = 'https://manzo-be.onrender.com/api/v1/flights/issueTicket';
 
 const parseJsonParam = <T,>(value?: string | string[]): T | null => {
@@ -257,6 +267,7 @@ export default function OverviewAndPaymentScreen() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusTone, setStatusTone] = useState<'info' | 'success' | 'error'>('info');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [pricedFlight, setPricedFlight] = useState<FlightOffer | null>(null);
 
   const reservedId = useMemo(() => (Array.isArray(params.reservedId) ? params.reservedId[0] : params.reservedId), [params.reservedId]);
   const offerId = useMemo(() => (Array.isArray(params.offerId) ? params.offerId[0] : params.offerId), [params.offerId]);
@@ -284,7 +295,7 @@ export default function OverviewAndPaymentScreen() {
   const fareDetailMap = useMemo(() => buildFareDetailMap(selectedFlight), [selectedFlight]);
 
   const purchaseConditions = useMemo(() => {
-    const rules = selectedFlight?.fareRules?.rules ?? [];
+    const rules = (pricedFlight ?? selectedFlight)?.fareRules?.rules ?? [];
 
     if (!rules.length) return FALLBACK_PURCHASE_CONDITIONS;
 
@@ -297,9 +308,10 @@ export default function OverviewAndPaymentScreen() {
     });
   }, [selectedFlight?.fareRules?.rules]);
 
-  const currency = selectedFlight?.price?.currency ?? searchPayload?.currencyCode ?? 'NGN';
-  const baseFare = Number(selectedFlight?.price?.base ?? 0);
-  const totalFare = Number(selectedFlight?.price?.grandTotal ?? selectedFlight?.price?.total ?? baseFare);
+  const priceSource = pricedFlight ?? selectedFlight;
+  const currency = priceSource?.price?.currency ?? searchPayload?.currencyCode ?? 'NGN';
+  const baseFare = Number(priceSource?.price?.base ?? 0);
+  const totalFare = Number(priceSource?.price?.grandTotal ?? priceSource?.price?.total ?? baseFare);
   const taxes = Math.max(totalFare - baseFare, 0);
   const serviceFee = 20000;
   const totalWithFees = (Number.isFinite(totalFare) ? totalFare : 0) + serviceFee;
@@ -332,8 +344,72 @@ export default function OverviewAndPaymentScreen() {
       return;
     }
 
+    setIsProcessing(true);
+    setStatusMessage('Checking the latest fare before issuing tickets…');
+    setStatusTone('info');
+
+    let confirmedFlight: FlightOffer | null = null;
+
+    try {
+      const pricePayload: FlightPriceCheckPayload = { flight: selectedFlight };
+      const priceResponse = await fetch(PRICE_CHECK_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(pricePayload),
+      });
+
+      if (!priceResponse.ok) {
+        const errorBody = await priceResponse.text();
+        throw new Error(errorBody || `Price check failed with status ${priceResponse.status}`);
+      }
+
+      const { data } = (await priceResponse.json()) as FlightPriceCheckResponse;
+      confirmedFlight = data?.flightOffers?.[0] ?? null;
+
+      if (!confirmedFlight) {
+        throw new Error('We could not verify the latest fare for this flight.');
+      }
+
+      const originalTotal = Number(selectedFlight.price?.grandTotal ?? selectedFlight.price?.total ?? selectedFlight.price?.base ?? 0);
+      const confirmedTotal = Number(
+        confirmedFlight.price?.grandTotal ?? confirmedFlight.price?.total ?? confirmedFlight.price?.base ?? Number.NaN,
+      );
+
+      if (!Number.isFinite(confirmedTotal)) {
+        throw new Error('The verified fare amount is invalid. Please try again.');
+      }
+
+      if (Math.abs(confirmedTotal - originalTotal) > 0.009) {
+        setStatusMessage(
+          `Fare updated: ${formatMoney(confirmedTotal, currency)} (was ${formatMoney(originalTotal, currency)}). Please review and try again.`,
+        );
+        setStatusTone('error');
+        Alert.alert(
+          'Fare changed',
+          `The latest fare is ${formatMoney(confirmedTotal, currency)}, previously ${formatMoney(originalTotal, currency)}. Please review before continuing.`,
+        );
+        setIsProcessing(false);
+        setPricedFlight(confirmedFlight);
+        return;
+      }
+
+      setPricedFlight(confirmedFlight);
+      setStatusMessage('Fare confirmed. Issuing tickets…');
+      setStatusTone('info');
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'We could not verify the latest fare. Please try again shortly.';
+      setStatusMessage(message);
+      setStatusTone('error');
+      Alert.alert('Price check failed', message);
+      setIsProcessing(false);
+      return;
+    }
+
     const payload = {
-      flight: selectedFlight,
+      flight: confirmedFlight ?? selectedFlight,
       travelers,
       reservedId,
       littelFlightInfo: [
@@ -354,10 +430,10 @@ export default function OverviewAndPaymentScreen() {
       const message =
         error instanceof Error ? error.message : 'We could not prepare your passenger details for submission.';
       Alert.alert('Ticket issuance failed', message);
+      setIsProcessing(false);
       return;
     }
 
-    setIsProcessing(true);
     setStatusMessage('Processing payment and issuing tickets…');
     setStatusTone('info');
 
