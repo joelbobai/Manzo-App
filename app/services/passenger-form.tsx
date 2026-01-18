@@ -1,4 +1,5 @@
 import type { FlightDictionaries, FlightOffer, FlightSearchPayload, PassengerCounts } from '@/types/flight';
+import { getApiBaseUrl } from '@/utils/api';
 import { encryptTicketPayload } from '@/utils/encrypt-ticket';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
@@ -22,6 +23,9 @@ import { formatMoney } from './flight-results';
 
 const statusBarHeight =
   Constants.statusBarHeight || (Platform.OS === "ios" ? 20 : 24);
+
+const API_BASE_URL = getApiBaseUrl();
+const RESERVE_TICKET_ENDPOINT = `${API_BASE_URL}/api/v1/flights/reserveTicket`;
 
 type PassengerFormParams = {
   flight?: string | string[];
@@ -544,7 +548,7 @@ export default function PassengerFormScreen() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://192.168.0.135:3800/api/v1/flights/reserveTicket', {
+      const response = await fetch(RESERVE_TICKET_ENDPOINT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
