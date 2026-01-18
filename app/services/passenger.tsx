@@ -1,9 +1,13 @@
-import { formatMoney } from './flight-results';
+import type { FlightOffer, FlightSearchPayload, PassengerCounts } from '@/types/flight';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import Constants from "expo-constants";
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import type { FlightOffer, FlightSearchPayload, PassengerCounts } from '@/types/flight';
+import { formatMoney } from './flight-results';
+
+const statusBarHeight =
+  Constants.statusBarHeight || (Platform.OS === "ios" ? 20 : 24);
 
 type PassengerParams = {
   flight?: string | string[];
@@ -228,7 +232,9 @@ export default function PassengerScreen() {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#f5f7fb',
-    padding: 16,
+    paddingRight: 16,
+    paddingLeft: 16,
+    paddingTop: statusBarHeight,
     paddingBottom: 32,
     gap: 16,
   },

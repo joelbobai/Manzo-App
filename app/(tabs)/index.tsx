@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
+import Constants from "expo-constants";
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
   FlatList,
+  Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -69,6 +71,8 @@ const hotDeal: Hotel = {
   badge: '25% OFF',
 };
 
+const statusBarHeight =
+  Constants.statusBarHeight || (Platform.OS === "ios" ? 20 : 24);
 export default function HomeScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string>('Hotel');
 
@@ -213,6 +217,7 @@ const styles = StyleSheet.create({
   },
   container: {
     paddingHorizontal: 20,
+    paddingTop: statusBarHeight,
     paddingBottom: 24,
     gap: 20,
   },

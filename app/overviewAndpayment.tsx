@@ -352,11 +352,23 @@ function OverviewAndPaymentContent() {
       return;
     }
 
+
+    // Ensure it's a string
+  const stringValue = config?.amount.toString().replace(/\D/g, "");
+
+  // Pad with leading zeros if needed
+  const paddedValue = stringValue.padStart(3, "0");
+
+  const naira = paddedValue.slice(0, -2);
+  const kobo = paddedValue.slice(-2);
+
+  let amountInNaira = Number(`${naira}.${kobo}`);
+
     try {
       popup.newTransaction({
         email: config.email,
-        amount: config.amount,
-        currency: config.currency,
+        amount: amountInNaira,
+        // currency: config.currency,
         metadata: config.metadata,
         onSuccess: handlePaystackSuccess,
         onCancel: handlePaystackCancel,
@@ -642,6 +654,7 @@ function OverviewAndPaymentContent() {
   const handlePaystackSuccess = async (response: unknown) => {
     setStatusMessage('Payment confirmed. Finalizing your booking…');
     setStatusTone('info');
+    console.log('Paystack success response', response);
     const reference = extractPaystackReference(response) ?? pendingReference ?? paystackConfig?.reference ?? null;
     await issueTickets(reference, response);
   };
@@ -933,7 +946,7 @@ export default function OverviewAndPaymentScreen() {
   }
 
   return (
-    <PaystackProvider publicKey={publicKey} currency="GHS" defaultChannels={PAYSTACK_CHANNELS} debug>
+    <PaystackProvider publicKey={publicKey} currency="NGN" defaultChannels={PAYSTACK_CHANNELS} debug>
       <OverviewAndPaymentContent />
     </PaystackProvider>
   );

@@ -1,13 +1,13 @@
+import { BottomSheet } from '@/components/ui/bottom-sheet';
 import { useAirports } from "@/hooks/useAirports";
-import { getAirportLocation, getCountryByIATA } from "@/utils/getCountryByIATA";
 import type { FlightOffer, FlightSegment, TravelerPricingDetail } from "@/types/flight";
+import { getAirportLocation, getCountryByIATA } from "@/utils/getCountryByIATA";
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import * as Localization from "expo-localization";
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { BottomSheet } from '@/components/ui/bottom-sheet';
 import IATAAirports from '../../data/IATA_airports.json';
 
 type Airport = {
@@ -616,11 +616,12 @@ export default function FlightResultsScreen() {
       </View>
       </View>
 
-  
+  <View style={{flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingBottom: 25}}>
 
       <Text style={styles.sectionLabel}>Result</Text>
 
       {flightCards}
+      </View>
     </ScrollView>
 
     <BottomSheet visible={isSheetVisible} onClose={handleCloseSheet}>
@@ -997,15 +998,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   sectionLabel: {
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: '700',
     color: '#0c2047',
     marginTop: 4,
-    marginBottom: -2,
+    marginBottom: 4,
   },
   flightCard: {
     backgroundColor: '#ffffff',
     borderRadius: 18,
+    marginBottom: 12,
     padding: 16,
     borderWidth: 1,
     borderColor: '#e7ecf5',
@@ -1499,6 +1501,7 @@ const styles = StyleSheet.create({
   sheetActions: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 25,
     justifyContent: 'space-between',
     gap: 10,
   },

@@ -2,6 +2,7 @@ import type { FlightDictionaries, FlightOffer, FlightSearchPayload, PassengerCou
 import { encryptTicketPayload } from '@/utils/encrypt-ticket';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import Constants from "expo-constants";
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -18,6 +19,9 @@ import {
   View,
 } from 'react-native';
 import { formatMoney } from './flight-results';
+
+const statusBarHeight =
+  Constants.statusBarHeight || (Platform.OS === "ios" ? 20 : 24);
 
 type PassengerFormParams = {
   flight?: string | string[];
