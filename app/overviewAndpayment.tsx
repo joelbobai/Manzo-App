@@ -9,6 +9,7 @@ import type {
   PassengerCounts,
   TravelerPricingDetail,
 } from '@/types/flight';
+import { getApiBaseUrl } from '@/utils/api';
 import { encryptTicketPayload } from '@/utils/encrypt-ticket';
 import { getAirportLocation, getCountryByIATA } from '@/utils/getCountryByIATA';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -46,8 +47,9 @@ const FALLBACK_PURCHASE_CONDITIONS = [
 
 const PAYSTACK_CHANNELS = ['card', 'bank_transfer', 'ussd', 'mobile_money'] as const;
 
-const PRICE_CHECK_ENDPOINT = 'http://192.168.0.135:3800/api/v1/flights/flightPriceLookup';
-const TICKET_ISSUANCE_ENDPOINT = 'http://192.168.0.135:3800/api/v1/flights/issueTicket';
+const API_BASE_URL = getApiBaseUrl();
+const PRICE_CHECK_ENDPOINT = `${API_BASE_URL}/api/v1/flights/flightPriceLookup`;
+const TICKET_ISSUANCE_ENDPOINT = `${API_BASE_URL}/api/v1/flights/issueTicket`;
 
 const resolvePaystackPublicKey = () => {
   if (process.env.EXPO_PUBLIC_ENV === 'production') {
